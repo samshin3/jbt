@@ -55,7 +55,7 @@ class DatabaseManager():
                     end_date,
                     location,
                     description,
-                    status_flag,
+                    status_flag
                 )
                 VALUES (
                     '{group_name}',
@@ -93,18 +93,28 @@ class DatabaseManager():
         return group_data
 
     # Manage "group_members" table
+    def userIsMember(self, group_id : int, username : str) -> bool:
+        query = f"""
+                SELECT COUNT(*) FROM group_members
+                WHERE group_id = {group_id} AND
+                username = '{username}'
+                """
+
+        # Checks if entry exists
+        result = self.cursor.execute(query).fetchone()
+        return result[0] > 0
+
+
     def addMemberToGroup(self, group_id : int, username : str) -> None:
         query = f" INSERT INTO group_members (group_id, username, date_joined) VALUES ({group_id},'{username}', date('now'))"
-
         self.cursor.execute(query)
-        self.connection.commit()
 
-    def getGroupMembers(self, group_id : int) -> pd.DataFrame:
+    def getGroupMembers(self, group_id : int) -> list:
         query = f"SELECT username FROM group_members WHERE group_id = {group_id}"
         self.cursor.execute(query)
         members = self.convertToDataFrame()
 
-        return members
+        return members["username"].tolist()
 
     def getUsersGroups(self, username : str) -> pd.DataFrame:
         
@@ -120,8 +130,7 @@ class DatabaseManager():
         return data
 
     # Manage "events" table
-    def addEvent(self, event_name : str, description : str, event_id : int,
-                 group_id : int, uploaded_by : str, currency : str) -> int:
+    def addEvent(self, event_name : str, description : str, group_id : int, uploaded_by : str, currency : str, paid_by : str) -> int:
         query = f"""
                 INSERT INTO events (
                     event_name,
@@ -129,17 +138,18 @@ class DatabaseManager():
                     group_id,
                     uploaded_by,
                     upload_date,
-                    currency
+                    currency,
+                    paid_by
                 )
                 
                 VALUES (
                     '{event_name}',
                     '{description}',
-                    {event_id},
                     {group_id},
                     '{uploaded_by}',
                     date('now'),
-                    '{currency}'
+                    '{currency}',
+                    '{paid_by}'
                 )
                 """
 
@@ -157,21 +167,25 @@ class DatabaseManager():
 
     # Manage "transactions" table
     def addTransaction(self, group_id : int, event_id : int, item_name : str,
-                       amount_due : float, owed_by : str) -> int:
+                       amount_due : float, owed_by : str, category : str) -> int:
         query = f"""
-                INSERT INTO events (
+                INSERT INTO transactions (
                     group_id,
                     event_id,
                     item_name,
                     amount_due,
-                    owed_by
+                    owed_by,
+                    category,
+                    modified_date
                 )
                 VALUES (
                     {group_id},
                     {event_id},
                     '{item_name}',
                     {amount_due},
-                    '{owed_by}'
+                    '{owed_by}',
+                    '{category}',
+                    date('now')
                 )
                 """
         
@@ -197,7 +211,7 @@ class DatabaseManager():
                     {group_id},
                     '{paid_by}',
                     '{owed_by}',
-                    {initial_owed_amt},
+                    {initial_owed_amt}
                 )
                 """
         
@@ -216,6 +230,17 @@ class DatabaseManager():
 
         return owed_amounts
 
+    def updateUserOwedAmounts(self, group_id : int, paid_by : str, owed_by : str, amount : int) -> None:
+        query = f"""
+                UPDATE user_paid_amounts
+                SET total_paid_for = total_paid_for + {amount}
+                WHERE group_id = {group_id} AND
+                paid_by = '{paid_by}' AND
+                owed_by = '{owed_by}'
+                """
+        self.cursor.execute(query)
+        self.connection.commit()
+
 if __name__ == "__main__":
     session = DatabaseManager()
 
@@ -224,7 +249,7 @@ if __name__ == "__main__":
     """
     #group_id = session.addGroupInfo("Test", "test", 'test', 'test', 'iowa')
     #session.addUser("sam", "sam@uwaterloo.ca")
-    print(session.runCustomQuery("SELECT * FROM users")["username"][0])
+    #print(session.getGroupMembers(3))
     # while True:
     #     query = input("Query: ")
     #     results, headers = session.runCustomQuery(query)
