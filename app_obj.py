@@ -7,7 +7,7 @@ class TransactionData(TypedDict):
     item_name: str
     category: str
     amount_due: float
-    owed_by: str
+    owed_by: List[str]
 
 # sqlite db instance
 db_session = DatabaseManager()
@@ -57,7 +57,7 @@ class UserSession():
             db_session.addUserPaidRelations(group_id = group_id, paid_by = new_member, owed_by = member)
             db_session.addUserPaidRelations(group_id = group_id, paid_by = member, owed_by = new_member)
 
-    def leaveGroup(self, ):
+    def leaveGroup():
         pass
 
     # transactions is a  list of dictionaries with the following keys: [item name, category, amount_due, owed_by]
@@ -71,13 +71,16 @@ class UserSession():
         
         for transaction in transactions:
             # Add Transaction History
-            db_session.addTransaction(group_id = group_id, event_id = event_id, item_name = transaction["item_name"],
-                                      amount_due = transaction["amount_due"], owed_by = transaction["owed_by"],
-                                      category = transaction["category"])
-            
-            # Add user owed amounts
-            db_session.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = transaction["owed_by"],
-                                             amount = transaction["amount_due"])
+            split_num = len(transaction["owed_by"])
+            amount_per_person = transaction["amount_due"] / split_num
+            for ower in transaction["owed_by"]:
+                db_session.addTransaction(group_id = group_id, event_id = event_id, item_name = transaction["item_name"],
+                                        amount_due = amount_per_person, owed_by = ower,
+                                        category = transaction["category"])
+                   
+                # Add user owed amounts
+                db_session.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = ower,
+                                                amount = amount_per_person)
             
     def summarizeAmountDue(self, group_id : int, user : str = None) -> dict[str, float]:
         if user is None:
