@@ -1,0 +1,137 @@
+const BASE_URL = "http://localhost:8000"
+
+// ─── Auth helper ─────────────────────────────────────────────────────────────
+function authHeaders() {
+  const token = localStorage.getItem("token")
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`
+  }
+}
+
+function handleUnauthorized(res) {
+  if (res.status === 401) {
+    localStorage.removeItem("token")
+    window.location.href = "/"
+  }
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export async function login(username) {
+  const res = await fetch(`${BASE_URL}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `username=${username}&password=placeholder`
+  })
+  if (!res.ok) throw new Error("Login failed")
+  const data = await res.json()
+  localStorage.setItem("token", data.access_token)
+}
+
+export function logout() {
+  localStorage.removeItem("token")
+}
+
+// ─── Groups ───────────────────────────────────────────────────────────────────
+
+// Returns: [{ group_id, group_name, status_flag, start_date, end_date, location, description, created_by }, ...]
+export async function getGroups() {
+  const res = await fetch(`${BASE_URL}/get_groups`, {
+    headers: authHeaders()
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to fetch groups")
+  return await res.json()
+}
+
+// Returns: { group_id }
+export async function createGroup(groupName, start, end, location, description) {
+  const res = await fetch(`${BASE_URL}/create_group`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ group_name: groupName, start, end, location, description })
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to create group")
+  return await res.json()
+}
+
+// ─── Members ──────────────────────────────────────────────────────────────────
+
+// Returns: [{ username, email, is_owner }, ...]
+export async function getGroupMembers(groupId) {
+  const res = await fetch(`${BASE_URL}/get_members/${groupId}`, {
+    headers: authHeaders()
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to fetch members")
+  return await res.json()
+}
+
+// Returns: { status: "ok" }
+export async function inviteMember(groupId, username) {
+  const res = await fetch(`${BASE_URL}/invite_member/${groupId}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ username })
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to invite member")
+  return await res.json()
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+// Returns: [{ transaction_id, item_name, category, amount_due, owed_by, modified_date }, ...]
+export async function getGroupTransactions(groupId) {
+  const res = await fetch(`${BASE_URL}/get_transactions/${groupId}`, {
+    headers: authHeaders()
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to fetch transactions")
+  return await res.json()
+}
+
+// Returns: { status: "ok" }
+// transactions: [{ item_name, amount_due, category, owed_by: [username, ...] }]
+export async function createEvent(groupId, { event_name, description, currency, paid_by, transactions }) {
+  const res = await fetch(`${BASE_URL}/create_event/${groupId}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ event_name, description, currency, paid_by, transactions })
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to create event")
+  return await res.json()
+}
+
+// ─── Balance ──────────────────────────────────────────────────────────────────
+
+// Returns: { "Michelle": 300, "Joanna": -102, ... }
+// Positive = they owe you, Negative = you owe them
+export async function getGroupBalance(groupId) {
+  const res = await fetch(`${BASE_URL}/get_group_balance/${groupId}`, {
+    headers: authHeaders()
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to fetch balance")
+  return await res.json()
+}
+
+export async function deleteGroup(groupId) {
+
+}
+
+export async function updateGroup(groupId) {
+
+}
+
+export async function getTotalSpent(groupId) {
+  const res = await fetch(`${BASE_URL}/get_total_spent/${groupId}`, {
+    headers: authHeaders()
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to get total")
+    return await res.json()
+}
