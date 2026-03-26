@@ -36,7 +36,7 @@ export default function AddTransaction({ group, currentUser, onBack, onSubmit })
         const data = await getGroupMembers(group.group_id)
         setMembers(data)
         // Default paid_by to currentUser if they're in the group
-        const match = data.find(m => m.username === currentUser)
+        const match = data.find(m => m === currentUser)
         if (match) setForm(f => ({ ...f, paid_by: match.username }))
       } catch (err) {
         setError("Failed to load members")
@@ -88,6 +88,7 @@ export default function AddTransaction({ group, currentUser, onBack, onSubmit })
     setSubmitting(true)
     setError(null)
     try {
+      console.log(validRows[0].owed_by)
       await createEvent(group.group_id, {
         event_name: form.event_name,
         description: form.description,
@@ -97,7 +98,7 @@ export default function AddTransaction({ group, currentUser, onBack, onSubmit })
           item_name: r.item_name,
           amount_due: parseFloat(r.amount_due),
           category: r.category,
-          owed_by: r.owed_by[0] || form.paid_by,  // uses first selected, fallback to paid_by
+          owed_by: r.owed_by || form.paid_by,  // uses first selected, fallback to paid_by
         }))
       })
       onSubmit()  // navigate back and trigger dashboard refresh

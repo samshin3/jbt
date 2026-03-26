@@ -57,6 +57,29 @@ export async function createGroup(groupName, start, end, location, description) 
   return await res.json()
 }
 
+export async function deleteGroup(groupId) {
+  const res = await fetch(`${BASE_URL}/delete_group/${groupId}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({})
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to delete group")
+  return await res.json()
+}
+
+export async function updateGroup(groupId, form) {
+  console.log(form)
+  const res = await fetch(`${BASE_URL}/update_group_info/${groupId}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(form)
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to update group")
+  return await res.json()
+}
+
 // ─── Members ──────────────────────────────────────────────────────────────────
 
 // Returns: [{ username, email, is_owner }, ...]
@@ -119,13 +142,6 @@ export async function getGroupBalance(groupId) {
   return await res.json()
 }
 
-export async function deleteGroup(groupId) {
-
-}
-
-export async function updateGroup(groupId) {
-
-}
 
 export async function getTotalSpent(groupId) {
   const res = await fetch(`${BASE_URL}/get_total_spent/${groupId}`, {
@@ -133,5 +149,14 @@ export async function getTotalSpent(groupId) {
   })
   handleUnauthorized(res)
   if (!res.ok) throw new Error("Failed to get total")
+    return await res.json()
+}
+
+export async function getEventsSummary(groupId) {
+  const res = await fetch(`${BASE_URL}/get_event_summary/${groupId}`, {
+    headers: authHeaders()
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to get Events Summary")
     return await res.json()
 }

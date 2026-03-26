@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getGroups, getGroupMembers, getGroupTransactions, getGroupBalance, createGroup, getTotalSpent } from '../api/api'
+import { getGroups, getGroupMembers, getGroupTransactions, getGroupBalance, createGroup, getTotalSpent, getEventsSummary } from '../api/api'
 
 // ─── API functions used in this file ───────────────────────────────────────
 // getGroups()                          → returns array of group objects
@@ -136,11 +136,11 @@ function Sidebar({ groups, selectedGroup, onSelectGroup, onGroupCreated }) {
   )
 }
 
-export default function Dashboard({ currentUser, onOpenSettings, onAddTransaction }) {
+export default function Dashboard({ currentUser, onOpenSettings, onAddTransaction, onSelectGroup }) {
   const [groups, setGroups] = useState([])
   const [selectedGroup, setSelectedGroup] = useState(null)
   const [members, setMembers] = useState([])
-  const [transactions, setTransactions] = useState([])
+  const [events, setEvents] = useState([])
   const [balances, setBalances] = useState({})
   const [summaryUser, setSummaryUser] = useState(currentUser)
   const [loadingGroups, setLoadingGroups] = useState(true)
@@ -157,7 +157,8 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
   // Fetch group detail whenever selected group changes
   useEffect(() => {
     if (!selectedGroup) return
-    fetchGroupData(selectedGroup.group_id)
+    setSummaryUser(currentUser)
+    fetchGroupData(selectedGroup.group_id, summaryUser.username)
   }, [selectedGroup?.group_id])
 
   async function fetchGroups() {
@@ -166,7 +167,7 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
     try {
       const data = await getGroups()
       setGroups(data)
-      if (data.length > 0) setSelectedGroup(data[0])
+      if (data.length > 0) setSelectedGroup(data[0]); onSelectGroup(data[0])
     } catch (err) {
       setError("Failed to load groups")
     } finally {
@@ -179,12 +180,12 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
     try {
       const [memberData, txData, balanceData, totalData] = await Promise.all([
         getGroupMembers(groupId),
-        getGroupTransactions(groupId),
+        getEventsSummary(groupId),
         getGroupBalance(groupId),
         getTotalSpent(groupId)
       ])
       setMembers(memberData)
-      setTransactions(txData)
+      setEvents(txData)
       setBalances(balanceData)
       setTotal(totalData)
     } catch (err) {
@@ -223,7 +224,11 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
       <Sidebar
         groups={groups}
         selectedGroup={selectedGroup}
-        onSelectGroup={setSelectedGroup}
+        onSelectGroup= {(group) => {
+          setSelectedGroup(group)
+          onSelectGroup(group)
+        }
+        }
         onGroupCreated={fetchGroups}
       />
 
@@ -323,7 +328,7 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
                   <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}>AMOUNT DUE/OWED</span>
                 </div>
                 {members.filter(m => m.username !== summaryUser).map(member => {
-                  const amount = balances[member.username] || 0
+                  const amount = balances.filter(bal => bal.owed_by === summaryUser && bal.paid_by === member.username)[0].amount || 0
                   return (
                     <div key={member.username} style={{
                       display: 'grid', gridTemplateColumns: '1fr 1fr auto',
@@ -369,9 +374,9 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
             </div>
           </div>
 
-          {/* Recent Transactions */}
+          {/* Recent Events */}
           <div style={{ background: 'white', borderRadius: '14px', padding: '24px', border: '1px solid #ebebeb' }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700' }}>Recent Transactions</h2>
+            <h2 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700' }}>Recent Events</h2>
             <div style={{ borderTop: '1px solid #f0f0f0' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', padding: '10px 0', borderBottom: '1px solid #f0f0f0', gap: '16px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa' }}>EVENT NAME</span>
@@ -379,10 +384,10 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}>TOTAL</span>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}>PAID BY</span>
               </div>
-              {transactions.length === 0 && (
-                <p style={{ padding: '20px 0', color: '#aaa', fontSize: '13px' }}>No transactions yet.</p>
+              {events.length === 0 && (
+                <p style={{ padding: '20px 0', color: '#aaa', fontSize: '13px' }}>No events yet.</p>
               )}
-              {transactions.map((tx, i) => (
+              {events.map((tx, i) => (
                 <div key={tx.event_id || i} style={{
                   display: 'grid', gridTemplateColumns: '1fr auto auto auto',
                   padding: '14px 0', borderBottom: '1px solid #f8f8f8', gap: '16px', alignItems: 'center'

@@ -1,6 +1,7 @@
 import sqlite3
 import pandas as pd
 from typing import Literal
+from data_validation import GroupUpdates, TransactionUpdates, EventUpdates
 
 class DatabaseManager():
 
@@ -13,7 +14,7 @@ class DatabaseManager():
     def close(self):
         self.connection.close()
 
-    def runCustomQuery(self, query : str) -> pd.DataFrame:
+    def runCustomQuery(self, query: str) -> pd.DataFrame:
         self.cursor.execute(query)
         self.connection.commit()
         return self.convertToDataFrame()
@@ -26,16 +27,16 @@ class DatabaseManager():
         headers = [description[0] for description in self.cursor.description]
         rows = self.cursor.fetchall()
 
-        df = pd.DataFrame(rows, columns=headers)
+        df = pd.DataFrame(rows, columns = headers)
         return df
     
     # Manage "users" table
-    def addUser(self, username : str, email : str, pfp : str) -> None:
+    def addUser(self, username: str, email: str, pfp: str) -> None:
         query = f"INSERT INTO users (username, email, profile_picture, verified) VALUES ('{username}', '{email}', '{pfp}', FALSE)"
         self.cursor.execute(query)
         self.connection.commit()
 
-    def getUserData(self, username : str) -> pd.DataFrame:
+    def getUserData(self, username: str) -> pd.DataFrame:
         query = f"""
             SELECT username, email, profile_picture, verified FROM users
             WHERE username = '{username}'
@@ -46,8 +47,8 @@ class DatabaseManager():
         return user_data
 
     # Manage "group" table
-    def addGroupInfo(self, group_name : str, created_by : str,
-                     start_date : str, end_date : str, location : str, description : str = None) -> int:
+    def addGroupInfo(self, group_name: str, created_by: str,
+                     start_date: str, end_date: str, location: str, description: str = None) -> int:
         query = f"""
                 INSERT INTO group_info (
                     group_name,
@@ -77,10 +78,26 @@ class DatabaseManager():
 
         return self.cursor.lastrowid
     
-    def editGroupInfo(self, group_id : int):
-        pass
+    def updateGroupInfo(self, group_id: int, field_updates: GroupUpdates) -> None:
+        allowed_fields = ("group_name", "description", "start_date", "end_date", "location")
+        updates = []
 
-    def getGroupData(self, group_id : int) -> list:
+        for field, value in field_updates.items():
+            if field in allowed_fields and value is not None:
+                updates.append(f"{field} = '{value}'")
+
+        update_queries = ", ".join(updates)
+        query = f"""
+                UPDATE group_info
+                SET {update_queries}, modified_date = date('now')
+                WHERE group_id = {group_id}
+                """
+        print(query)
+        self.cursor.execute(query)
+        self.connection.commit()
+
+
+    def getGroupData(self, group_id: int) -> list:
         query = f"""
                 SELECT group_name, description,
                     status_flag, modified_date,
@@ -95,8 +112,16 @@ class DatabaseManager():
         group_data = self.convertToDataFrame()
         return group_data
 
+    def groupExists(self, group_id: int) -> bool:
+        query = f"""
+                SELECT COUNT(*) FROM group_info
+                WHERE group_id = {group_id}
+                """
+        result = self.cursor.execute(query).fetchone()
+        return result[0] > 0
+
     # Manage "group_members" table
-    def userIsMember(self, group_id : int, username : str) -> bool:
+    def userIsMember(self, group_id: int, username: str) -> bool:
         query = f"""
                 SELECT COUNT(*) FROM group_members
                 WHERE group_id = {group_id} AND
@@ -107,19 +132,22 @@ class DatabaseManager():
         result = self.cursor.execute(query).fetchone()
         return result[0] > 0
 
-
-    def addMemberToGroup(self, group_id : int, username : str) -> None:
+    def addMemberToGroup(self, group_id: int, username: str) -> None:
         query = f" INSERT INTO group_members (group_id, username, date_joined) VALUES ({group_id},'{username}', date('now'))"
         self.cursor.execute(query)
 
-    def getGroupMembers(self, group_id : int) -> list:
-        query = f"SELECT username FROM group_members WHERE group_id = {group_id}"
+    def getGroupMembers(self, group_id: int) -> pd.DataFrame:
+        query = f"""
+                SELECT u.username, u.email, u.profile_picture, u.verified, g.is_owner FROM group_members g
+                LEFT JOIN users u ON u.username = g.username
+                WHERE g.group_id = {group_id}
+                """
         self.cursor.execute(query)
         members = self.convertToDataFrame()
 
-        return members["username"].tolist()
+        return members
 
-    def getUsersGroups(self, username : str) -> pd.DataFrame:
+    def getUsersGroups(self, username: str) -> pd.DataFrame:
         
         query = f"""
                 SELECT 
@@ -136,7 +164,8 @@ class DatabaseManager():
                 
                 FROM group_info g
                 JOIN group_members m ON g.group_id = m.group_id
-                WHERE m.username = '{username}'
+                WHERE m.username = '{username}' AND
+                NOT g.status_flag = 'deleted'
                 """
         
         self.cursor.execute(query)
@@ -144,8 +173,18 @@ class DatabaseManager():
 
         return data
 
+    def deleteGroup(self, group_id: int) -> None:
+        query = f"""
+                UPDATE group_info 
+                SET status_flag = 'deleted', modified_date = date('now')
+                WHERE group_id = {group_id}
+                """
+        
+        self.cursor.execute(query)
+        self.connection.commit()
+
     # Manage "events" table
-    def addEvent(self, event_name : str, description : str, group_id : int, uploaded_by : str, currency : str, paid_by : str) -> int:
+    def addEvent(self, event_name: str, description: str, group_id: int, uploaded_by: str, currency: str, paid_by: str) -> int:
         query = f"""
                 INSERT INTO events (
                     event_name,
@@ -172,17 +211,39 @@ class DatabaseManager():
         self.connection.commit()
         return self.cursor.lastrowid
     
-    def getEvent(self, event_id : int) -> pd.DataFrame:
-        query = f"SELECT event_name, description, group_id, uploaded_by, upload_date, currency FROM event_id WHERE event_id = {event_id}"
+    def getEvent(self, event_id: int) -> pd.DataFrame:
+        query = f"SELECT event_name, description, group_id, uploaded_by, upload_date, currency FROM events WHERE event_id = {event_id}"
 
         self.cursor.execute(query)
         event_data = self.convertToDataFrame()
 
         return event_data
+    
+    def getEventSummary(self, group_id: int) -> pd.DataFrame:
+        query = f"""
+                SELECT
+                    e.event_id,
+                    e.event_name,
+                    e.upload_date,
+                    SUM(t.amount_due) AS total,
+                    e.paid_by
+                FROM events e
+
+                LEFT JOIN transactions t ON e.event_id = t.event_id
+                WHERE e.group_id = {group_id}
+                GROUP BY e.event_id
+                """
+        self.cursor.execute(query)
+        event_summary = self.convertToDataFrame()
+
+        return event_summary
+
+    def updateEvent(self, event_id: int, **kwargs: EventUpdates):
+        pass
 
     # Manage "transactions" table
-    def addTransaction(self, group_id : int, event_id : int, item_name : str,
-                       amount_due : float, owed_by : str, category : str) -> int:
+    def addTransaction(self, group_id: int, event_id: int, item_name: str,
+                       amount_due: float, owed_by: str, category: str) -> int:
         query = f"""
                 INSERT INTO transactions (
                     group_id,
@@ -209,17 +270,21 @@ class DatabaseManager():
         
         return self.cursor.lastrowid
 
-    def getTransactions(self, by : SearchBy, id_value : int) -> pd.DataFrame:
+    def getTransactions(self, by: SearchBy, id_value: int) -> pd.DataFrame:
         query = f"SELECT transaction_id, modified_date, item_name, category, amount_due, owed_by FROM transactions WHERE {by} = {id_value}"
 
         self.cursor.execute(query)
         transactions = self.convertToDataFrame()
 
-        return transactions.to_dict(orient="records")
+        return transactions
+
+    def updateTransaction(self, transaction_id: int, **kwargs: TransactionUpdates) -> None:
+        pass
+        
 
     # Manage "user_paid_amounts" table
-    def addUserPaidRelations(self, group_id : int, paid_by : str,
-                             owed_by : str) -> None:
+    def addUserPaidRelations(self, group_id: int, paid_by: str,
+                             owed_by: str) -> None:
         initial_owed_amt = 0
         query = f"""
                 INSERT INTO user_paid_amounts VALUES (
@@ -233,7 +298,7 @@ class DatabaseManager():
         self.cursor.execute(query)
         self.connection.commit()
     
-    def getUserOwedAmounts(self, group_id : int, username : str) -> pd.DataFrame:
+    def getUserOwedAmounts(self, group_id: int, username: str) -> pd.DataFrame:
         query = f"""
                 SELECT paid_by, owed_by, total_paid_for FROM user_paid_amounts 
                 WHERE group_id = {group_id} AND
@@ -244,8 +309,19 @@ class DatabaseManager():
         owed_amounts = self.convertToDataFrame()
 
         return owed_amounts
+    
+    def getGroupOwedAmounts(self, group_id: int) -> pd.DataFrame:
+        query = f"""
+                SELECT paid_by, owed_by, total_paid_for FROM user_paid_amounts 
+                WHERE group_id = {group_id}
+                """
+        
+        self.cursor.execute(query)
+        owed_amounts = self.convertToDataFrame()
 
-    def updateUserOwedAmounts(self, group_id : int, paid_by : str, owed_by : str, amount : int) -> None:
+        return owed_amounts
+
+    def updateUserOwedAmounts(self, group_id: int, paid_by: str, owed_by: str, amount: int) -> None:
         query = f"""
                 UPDATE user_paid_amounts
                 SET total_paid_for = total_paid_for + {amount}
@@ -256,7 +332,7 @@ class DatabaseManager():
         self.cursor.execute(query)
         self.connection.commit()
 
-    def getTotalSpent(self, group_id : int) -> int:
+    def getTotalSpent(self, group_id: int) -> int:
         query = f"""
                 SELECT SUM(amount_due) AS total FROM transactions
                 WHERE group_id = {group_id}
@@ -268,7 +344,10 @@ class DatabaseManager():
 if __name__ == "__main__":
     session = DatabaseManager()
 
-    print(type(session.getTotalSpent(6)))
+    # print(session.getEventSummary(group_id = 6))
+    # print(session.getTotalSpent(6))
+    # print(session.getGroupData(7))
+    print(session.getGroupData(7))
     #group_id = session.addGroupInfo("Test", "test", 'test', 'test', 'iowa')
     #session.addUser("sam", "sam@uwaterloo.ca")
     #print(session.getGroupMembers(3))
@@ -276,6 +355,6 @@ if __name__ == "__main__":
     #     query = input("Query: ")
     #     results, headers = session.runCustomQuery(query)
     #     if headers:
-    #         df = pd.DataFrame(results,columns=headers)
+    #         df = pd.DataFrame(results,columns = headers)
     #         print(df)
         
