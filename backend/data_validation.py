@@ -1,6 +1,8 @@
 from typing import Literal, TypedDict, List
 from pydantic import BaseModel
 
+validActions = Literal["delete", "update", "new"]
+
 class GroupUpdates(TypedDict, total=False):
     group_name: str
     description: str
@@ -26,6 +28,12 @@ class TransactionData(TypedDict):
     category: str
     amount_due: float
     owed_by: List[str]
+
+class TransactionEdits(TypedDict, total=False):
+    transaction_id: int = None
+    subgroup_id: int = None
+    action: validActions
+    transaction_data: TransactionData
 
 class CreateGroupRequest(BaseModel):
     group_name: str

@@ -102,9 +102,9 @@ def get_event_summary_route(group_id: int, username: str = Depends(get_current_u
     return event_summary.to_dict(orient = "records")
 
 
-@app.get("/get_transactions/{group_id}")
-def get_transactions_route(group_id: int, username: str = Depends(get_current_user), db = Depends(get_db)):
-    df = db.getTransactions(by = "group_id", id_value = group_id)
+@app.get("/get_transactions/{event_id}")
+def get_transactions_route(event_id: int, username: str = Depends(get_current_user), db = Depends(get_db)):
+    df = db.getTransactions(by = "event_id", id_value = event_id)
     if df is False or df is None:
         return []
     return df.to_dict(orient = "records")

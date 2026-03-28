@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getGroups, getGroupMembers, getGroupTransactions, getGroupBalance, createGroup, getTotalSpent, getEventsSummary } from '../api/api'
+import { getGroups, getGroupMembers, getGroupBalance, createGroup, getTotalSpent, getEventsSummary } from '../api/api'
 
 // ─── API functions used in this file ───────────────────────────────────────
 // getGroups()                          → returns array of group objects

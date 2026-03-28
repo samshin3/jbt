@@ -107,8 +107,8 @@ export async function inviteMember(groupId, username) {
 // ─── Transactions ─────────────────────────────────────────────────────────────
 
 // Returns: [{ transaction_id, item_name, category, amount_due, owed_by, modified_date }, ...]
-export async function getGroupTransactions(groupId) {
-  const res = await fetch(`${BASE_URL}/get_transactions/${groupId}`, {
+export async function getGroupTransactions(eventId) {
+  const res = await fetch(`${BASE_URL}/get_transactions/${eventId}`, {
     headers: authHeaders()
   })
   handleUnauthorized(res)
