@@ -341,11 +341,12 @@ class DatabaseManager():
 
         return transactions
 
-    def updateTransaction(self, transaction_id: int, transaction_updates: TransactionUpdates) -> None:
-        allowed_fields = ("item_name", "amount_due", "category", "owed_by")
+    # Assumes owed_by inside transaction_updates exists as an entry
+    def updateTransaction(self, subgroup_id: int, update_info: TransactionUpdates) -> None:
+        allowed_fields = ("item_name", "amount_due", "category")
         updates = []
 
-        for field, value in transaction_updates.items():
+        for field, value in update_info.items():
             if field in allowed_fields and value is not None:
                 updates.append(f"{field} = '{value}'")
 
@@ -353,7 +354,8 @@ class DatabaseManager():
         query = f"""
                 UPDATE transactions
                 SET {update_queries}, modified_date = date('now')
-                WHERE transaction_id = {transaction_id}
+                WHERE subgroup_id = {subgroup_id} AND
+                owed_by = {update_info["owed_by"]}
                 """
         self.cursor.execute(query)
         self.connection.commit()

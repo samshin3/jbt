@@ -121,9 +121,12 @@ def updateEventFull(db: DatabaseManager, group_id: int, event_id: int, event_edi
 
     for transaction in transaction_edits:
         old_transaction = old_data[old_data["subgroup_id"] == transaction["subgroup_id"]]
-        ower_list = old_transaction["owed_by"][0].split(",")
-        owed_amount = old_transaction["amount_due"][0]
-        paid_by = old_transaction["paid_by"][0]
+        old_transaction_data = {
+            "ower_list": old_transaction["owed_by"][0].split(","),
+            "owed_amount": old_transaction["amount_due"][0],
+            "paid_by": old_transaction["paid_by"][0],
+            "category": old_transaction["category"][0]
+        }
 
         match transaction["action"]:
             case "new":
@@ -134,16 +137,28 @@ def updateEventFull(db: DatabaseManager, group_id: int, event_id: int, event_edi
             case "delete":
                 db.deleteTransaction(by = "subgroup_id", id_value = transaction["subgroup_id"])
 
-                for ower in ower_list:
-                    db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = ower, amount = owed_amount * -1)
-
             case "update":
-                pass
+                updateOwerRecords(db)
 
-def compare(old):
-    pass
+def updateOwerRecords(db: DatabaseManager, old_data: TransactionData, new_data: TransactionData,
+                      group_id: int, event_id: int, subgroup_id: int) -> None:
 
+    new_count = len(new_data["owed_by"])
+    new_amount = round(new_data["amount_due"] / new_count, 2)
+    new_data["amount_due"] = new_amount
 
+    # Delete old owed_by
+    for member in old_data["owed_by"]:
+        if member not in new_data["owed_by"]:
+            db.deleteTransaction(by = "subgroup_id", id_value = subgroup_id, owed_by = member)
+
+    # Update / add details for owed_by
+    for member in new_data["owed_by"]:
+        if member not in old_data["owed_by"]:
+            db.addTransaction(group_id = group_id, event_id = event_id, item_name = new_data["item_name"],
+                              amount_due = new_amount, owed_by = member, category = new_data["category"], subgroup = subgroup_id)
+        else:
+            db.updateTransaction(subgroup_id = subgroup_id, transaction_updates = new_data)
                 
 # Updates users owed amounts as well
 def deleteEvent(db: DatabaseManager, event_id: int, group_id: int) -> None:
