@@ -91,13 +91,27 @@ def submitTransaction(db: DatabaseManager, transaction: TransactionData, group_i
 
 def summarizeAmountDue(db: DatabaseManager, group_id: int) -> dict[str, float]:
     members = db.getGroupMembers(group_id = group_id)
-    owed_df = db.getGroupOwedAmounts(group_id = group_id)
+    owed_df = db.getGroupOwedSummary(group_id = group_id)
+
+    for payer in members["username"]:
+        for ower in members["username"]:
+            filtered_owed_df = owed_df[(owed_df["owed_by"] == ower) & (owed_df["paid_by"] == payer)]
+
+            if filtered_owed_df.empty:
+                row = pd.DataFrame([{
+                    "owed_by": ower,
+                    "paid_by": payer,
+                    "amount_due": 0
+                }])
+
+                owed_df = pd.concat([owed_df, row])
+
     owed_df = owed_df[owed_df["owed_by"] != owed_df["paid_by"]]
     group_owed = []
     for member in members["username"]:
 
-        debits = owed_df[owed_df["paid_by"] == member].groupby("owed_by")["total_paid_for"].sum()
-        credits = owed_df[owed_df["owed_by"] == member].groupby("paid_by")["total_paid_for"].sum()
+        debits = owed_df[owed_df["paid_by"] == member].groupby("owed_by")["amount_due"].sum()
+        credits = owed_df[owed_df["owed_by"] == member].groupby("paid_by")["amount_due"].sum()
 
         summary = debits.sub(credits, fill_value = 0)
         df = summary.to_frame().reset_index()
