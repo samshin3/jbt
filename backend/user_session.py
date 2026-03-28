@@ -15,7 +15,6 @@ def createGroup(db: DatabaseManager, username: str, group_name: str, start: str,
     group_id = db.addGroupInfo(group_name = group_name, created_by = username,
                                start_date = start, end_date = end, location = location, description = description)
     db.addMemberToGroup(group_id, username)
-    db.addUserPaidRelations(group_id, username, username)
 
     return group_id
 
@@ -45,16 +44,6 @@ def acceptInvite(db: DatabaseManager, username: str, group_id: int, new_member: 
         return
 
     db.addMemberToGroup(group_id = group_id, username = new_member)
-    members = db.getGroupMembers(group_id = group_id)
-
-    db.addUserPaidRelations(group_id = group_id, paid_by = new_member, owed_by = new_member)
-
-    for member in members:
-        if member == new_member:
-            continue
-        db.addUserPaidRelations(group_id = group_id, paid_by = new_member, owed_by = member)
-        db.addUserPaidRelations(group_id = group_id, paid_by = member, owed_by = new_member)
-
 
 def leaveGroup():
     pass
@@ -86,18 +75,32 @@ def submitTransaction(db: DatabaseManager, transaction: TransactionData, group_i
             subgroupID = trans_id
             isFirstEntry = False
 
-        db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = ower,
-                                amount = amount_per_person)
+        # db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = ower,
+        #                         amount = amount_per_person)
 
 def summarizeAmountDue(db: DatabaseManager, group_id: int) -> dict[str, float]:
     members = db.getGroupMembers(group_id = group_id)
-    owed_df = db.getGroupOwedAmounts(group_id = group_id)
+    owed_df = db.getGroupOwedSummary(group_id = group_id)
+
+    for payer in members["username"]:
+        for ower in members["username"]:
+            filtered_owed_df = owed_df[(owed_df["owed_by"] == ower) & (owed_df["paid_by"] == payer)]
+
+            if filtered_owed_df.empty:
+                row = pd.DataFrame([{
+                    "owed_by": ower,
+                    "paid_by": payer,
+                    "amount_due": 0
+                }])
+
+                owed_df = pd.concat([owed_df, row])
+
     owed_df = owed_df[owed_df["owed_by"] != owed_df["paid_by"]]
     group_owed = []
     for member in members["username"]:
 
-        debits = owed_df[owed_df["paid_by"] == member].groupby("owed_by")["total_paid_for"].sum()
-        credits = owed_df[owed_df["owed_by"] == member].groupby("paid_by")["total_paid_for"].sum()
+        debits = owed_df[owed_df["paid_by"] == member].groupby("owed_by")["amount_due"].sum()
+        credits = owed_df[owed_df["owed_by"] == member].groupby("paid_by")["amount_due"].sum()
 
         summary = debits.sub(credits, fill_value = 0)
         df = summary.to_frame().reset_index()
@@ -152,8 +155,8 @@ def deleteEvent(db: DatabaseManager, event_id: int, group_id: int) -> None:
     db.deleteEvent(event_id = event_id)
     db.deleteTransaction(by = 'event_id', id_value = event_id)
     
-    for index, row in recon.iterrows():
-        db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = row["owed_by"], amount = row["amount_due"])
+    # for index, row in recon.iterrows():
+    #     db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = row["owed_by"], amount = row["amount_due"])
 
 
 if __name__ == "__main__":
