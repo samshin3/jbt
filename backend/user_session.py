@@ -15,7 +15,6 @@ def createGroup(db: DatabaseManager, username: str, group_name: str, start: str,
     group_id = db.addGroupInfo(group_name = group_name, created_by = username,
                                start_date = start, end_date = end, location = location, description = description)
     db.addMemberToGroup(group_id, username)
-    db.addUserPaidRelations(group_id, username, username)
 
     return group_id
 
@@ -45,16 +44,6 @@ def acceptInvite(db: DatabaseManager, username: str, group_id: int, new_member: 
         return
 
     db.addMemberToGroup(group_id = group_id, username = new_member)
-    members = db.getGroupMembers(group_id = group_id)
-
-    db.addUserPaidRelations(group_id = group_id, paid_by = new_member, owed_by = new_member)
-
-    for member in members:
-        if member == new_member:
-            continue
-        db.addUserPaidRelations(group_id = group_id, paid_by = new_member, owed_by = member)
-        db.addUserPaidRelations(group_id = group_id, paid_by = member, owed_by = new_member)
-
 
 def leaveGroup():
     pass
@@ -86,8 +75,8 @@ def submitTransaction(db: DatabaseManager, transaction: TransactionData, group_i
             subgroupID = trans_id
             isFirstEntry = False
 
-        db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = ower,
-                                amount = amount_per_person)
+        # db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = ower,
+        #                         amount = amount_per_person)
 
 def summarizeAmountDue(db: DatabaseManager, group_id: int) -> dict[str, float]:
     members = db.getGroupMembers(group_id = group_id)
@@ -166,8 +155,8 @@ def deleteEvent(db: DatabaseManager, event_id: int, group_id: int) -> None:
     db.deleteEvent(event_id = event_id)
     db.deleteTransaction(by = 'event_id', id_value = event_id)
     
-    for index, row in recon.iterrows():
-        db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = row["owed_by"], amount = row["amount_due"])
+    # for index, row in recon.iterrows():
+    #     db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = row["owed_by"], amount = row["amount_due"])
 
 
 if __name__ == "__main__":

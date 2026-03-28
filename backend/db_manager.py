@@ -2,6 +2,7 @@ import sqlite3
 import pandas as pd
 from typing import Literal
 from data_validation import GroupUpdates, TransactionUpdates, EventUpdates, validActions
+from warnings import deprecated
 
 class DatabaseManager():
 
@@ -370,57 +371,6 @@ class DatabaseManager():
 
         self.cursor.execute(query)
         self.connection.commit()
-        
-
-    # Manage "user_paid_amounts" table
-    def addUserPaidRelations(self, group_id: int, paid_by: str,
-                             owed_by: str) -> None:
-        initial_owed_amt = 0
-        query = f"""
-                INSERT INTO user_paid_amounts VALUES (
-                    {group_id},
-                    '{paid_by}',
-                    '{owed_by}',
-                    {initial_owed_amt}
-                )
-                """
-        
-        self.cursor.execute(query)
-        self.connection.commit()
-    
-    def getUserOwedAmounts(self, group_id: int, username: str) -> pd.DataFrame:
-        query = f"""
-                SELECT paid_by, owed_by, total_paid_for FROM user_paid_amounts 
-                WHERE group_id = {group_id} AND
-                (paid_by = '{username}' OR owed_by = '{username}')
-                """
-        
-        self.cursor.execute(query)
-        owed_amounts = self.convertToDataFrame()
-
-        return owed_amounts
-    
-    def getGroupOwedAmounts(self, group_id: int) -> pd.DataFrame:
-        query = f"""
-                SELECT paid_by, owed_by, total_paid_for FROM user_paid_amounts 
-                WHERE group_id = {group_id}
-                """
-        
-        self.cursor.execute(query)
-        owed_amounts = self.convertToDataFrame()
-
-        return owed_amounts
-
-    def updateUserOwedAmounts(self, group_id: int, paid_by: str, owed_by: str, amount: int) -> None:
-        query = f"""
-                UPDATE user_paid_amounts
-                SET total_paid_for = total_paid_for + {amount}
-                WHERE group_id = {group_id} AND
-                paid_by = '{paid_by}' AND
-                owed_by = '{owed_by}'
-                """
-        self.cursor.execute(query)
-        self.connection.commit()
 
     def getTotalSpent(self, group_id: int) -> int:
         query = f"""
@@ -446,6 +396,60 @@ class DatabaseManager():
         summary = self.convertToDataFrame()
 
         return summary
+    
+    # user_paid_amounts table functions: deprecated since 28 March, 2026. Replaced with getGroupOwedSummary
+    @deprecated("user_paid_amounts table no longer required")
+    def addUserPaidRelations(self, group_id: int, paid_by: str,
+                             owed_by: str) -> None:
+        initial_owed_amt = 0
+        query = f"""
+                INSERT INTO user_paid_amounts VALUES (
+                    {group_id},
+                    '{paid_by}',
+                    '{owed_by}',
+                    {initial_owed_amt}
+                )
+                """
+        
+        self.cursor.execute(query)
+        self.connection.commit()
+
+    @deprecated("user_paid_amounts table no longer required")    
+    def getUserOwedAmounts(self, group_id: int, username: str) -> pd.DataFrame:
+        query = f"""
+                SELECT paid_by, owed_by, total_paid_for FROM user_paid_amounts 
+                WHERE group_id = {group_id} AND
+                (paid_by = '{username}' OR owed_by = '{username}')
+                """
+        
+        self.cursor.execute(query)
+        owed_amounts = self.convertToDataFrame()
+
+        return owed_amounts
+
+    @deprecated("user_paid_amounts table no longer required")    
+    def getGroupOwedAmounts(self, group_id: int) -> pd.DataFrame:
+        query = f"""
+                SELECT paid_by, owed_by, total_paid_for FROM user_paid_amounts 
+                WHERE group_id = {group_id}
+                """
+        
+        self.cursor.execute(query)
+        owed_amounts = self.convertToDataFrame()
+
+        return owed_amounts
+    @deprecated("user_paid_amounts table no longer required")
+    def updateUserOwedAmounts(self, group_id: int, paid_by: str, owed_by: str, amount: int) -> None:
+        query = f"""
+                UPDATE user_paid_amounts
+                SET total_paid_for = total_paid_for + {amount}
+                WHERE group_id = {group_id} AND
+                paid_by = '{paid_by}' AND
+                owed_by = '{owed_by}'
+                """
+        self.cursor.execute(query)
+        self.connection.commit()
+
 
 if __name__ == "__main__":
     session = DatabaseManager()
