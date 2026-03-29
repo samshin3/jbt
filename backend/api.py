@@ -139,6 +139,7 @@ def get_total_route(group_id: int, username: str = Depends(get_current_user), db
 
 @app.post("/update_group_info/{group_id}")
 def update_group_info_route(group_id: int, req: GroupUpdates, username: str = Depends(get_current_user), db = Depends(get_db)):
+    print(req)
     updateGroup(db = db, group_id = group_id, updates = req)
     return {"status": "ok"}
 
@@ -156,5 +157,6 @@ def get_event_details_route(event_id: int, username: str = Depends(get_current_u
 
 @app.post("/update_event/{event_id}")
 def update_event_route(event_id: int, req: EventUpdateRequest, username: str = Depends(get_current_user), db = Depends(get_db)):
-    updateEventFull
+    updateEventFull(db = db, group_id = req["group_id"], event_id = event_id, event_edits = req["event_updates"], transaction_edits = req["transaction_updates"])
+    return {"status": "ok"}
     

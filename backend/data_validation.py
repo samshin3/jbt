@@ -58,5 +58,6 @@ class InviteRequest(BaseModel):
     username: str
 
 class EventUpdateRequest(BaseModel):
+    group_id: int
     event_updates: EventUpdates
     transaction_updates: List[TransactionEdits]

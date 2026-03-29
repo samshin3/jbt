@@ -34,8 +34,8 @@ export default function GroupSettings({ group, currentUser, onBack }) {
 
   const [form, setForm] = useState({
     description: group?.description || '',
-    start: group?.start_date || '',
-    end: group?.end_date || '',
+    start_date: group?.start_date || '',
+    end_date: group?.end_date || '',
     location: group?.location || '',
   })
 
@@ -147,15 +147,15 @@ export default function GroupSettings({ group, currentUser, onBack }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <input
                 type="date"
-                value={form.start}
-                onChange={e => setForm({ ...form, start: e.target.value })}
+                value={form.start_date}
+                onChange={e => setForm({ ...form, start_date: e.target.value })}
                 style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #e5e5e5', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafafa' }}
               />
               <span style={{ color: '#888', fontWeight: '500', flexShrink: 0 }}>To</span>
               <input
                 type="date"
-                value={form.end}
-                onChange={e => setForm({ ...form, end: e.target.value })}
+                value={form.end_date}
+                onChange={e => setForm({ ...form, end_date: e.target.value })}
                 style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #e5e5e5', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafafa' }}
               />
             </div>
