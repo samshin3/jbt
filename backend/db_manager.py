@@ -209,7 +209,7 @@ class DatabaseManager():
         self.connection.commit()
         return self.cursor.lastrowid
     
-    def getEventDetails(self, event_id: int) ->pd.DataFrame:
+    def getEventDetails(self, event_id: int, as_json: bool = False) -> pd.DataFrame | dict:
         query = f"""
                 SELECT
                     e.event_name, e.description, e.paid_by, e.currency, e.event_id,
@@ -217,11 +217,19 @@ class DatabaseManager():
                     t.category, GROUP_CONCAT(t.owed_by) AS owed_by, t.subgroup_id
                 FROM transactions t
                 INNER JOIN events e ON e.event_id = t.event_id
-                WHERE e.event_id = {event_id}
+                WHERE e.event_id = {event_id} AND
+                (t.status_flag != 'deleted' OR t.status_flag IS NULL)
                 GROUP BY t.subgroup_id
                 """
         self.cursor.execute(query)
         data = self.convertToDataFrame()
+        data["owed_by"] = data["owed_by"].apply(lambda x: x.split(","))
+        if as_json:
+            json_data = data.loc[0,["event_name", "description", "paid_by", "currency", "event_id"]].to_dict()
+            transaction_data = data.loc[:, ["transaction_id", "subgroup_id", "owed_by", "amount_due", "item_name", "category"]].to_dict(orient = "records")
+            json_data["transactions"] = transaction_data
+            
+            return json_data
 
         return data
 
@@ -258,9 +266,12 @@ class DatabaseManager():
 
         return event_summary
 
-    def updateEvent(self, event_id: int, event_updates: EventUpdates):
+    def updateEvent(self, event_id: int, event_updates: EventUpdates) -> None:
         allowed_fields = ("event_name", "description", "currency", "paid_by")
         updates = []
+
+        if len(event_updates) == 0:
+            return
 
         for field, value in event_updates.items():
             if field in allowed_fields and value is not None:
@@ -355,7 +366,7 @@ class DatabaseManager():
                 UPDATE transactions
                 SET {update_queries}, modified_date = date('now')
                 WHERE subgroup_id = {subgroup_id} AND
-                owed_by = {update_info["owed_by"]}
+                owed_by = '{update_info["owed_by"]}'
                 """
         self.cursor.execute(query)
         self.connection.commit()
@@ -454,16 +465,8 @@ class DatabaseManager():
 
 if __name__ == "__main__":
     session = DatabaseManager()
-    print(session.runCustomQuery("""
-                SELECT
-                    e.paid_by, t.owed_by, SUM(t.amount_due) AS amount_due
-                FROM transactions t
-                INNER JOIN events e ON e.event_id = t.event_id
-                WHERE t.status_flag != 'deleted' OR t.status_flag IS NULL
-                GROUP BY t.owed_by, e.paid_by
-                """))
-    
-    print(session.runCustomQuery("SELECT * FROM user_paid_amounts WHERE group_id = 6 ORDER BY paid_by ASC" ))
+    data = session.getEventDetails(event_id=1)
+    print(data)
     #print(session.runCustomQuery("SELECT * FROM events"))
     #group_id = session.addGroupInfo("Test", "test", 'test', 'test', 'iowa')
     #session.addUser("sam", "sam@uwaterloo.ca")

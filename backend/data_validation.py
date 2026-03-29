@@ -30,7 +30,6 @@ class TransactionData(TypedDict):
     owed_by: List[str]
 
 class TransactionEdits(TypedDict, total=False):
-    transaction_id: int = None
     subgroup_id: int = None
     action: validActions
     transaction_data: TransactionData
@@ -57,3 +56,7 @@ class CreateEventRequest(BaseModel):
 
 class InviteRequest(BaseModel):
     username: str
+
+class EventUpdateRequest(BaseModel):
+    event_updates: EventUpdates
+    transaction_updates: List[TransactionEdits]

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
 from db_manager import DatabaseManager
 from user_session import *
-from data_validation import CreateGroupRequest, TransactionInput, CreateEventRequest, InviteRequest, GroupUpdates, TransactionUpdates
+from data_validation import CreateGroupRequest, TransactionInput, CreateEventRequest, InviteRequest, GroupUpdates, TransactionUpdates, EventUpdateRequest
 import os
 
 load_dotenv()
@@ -146,3 +146,15 @@ def update_group_info_route(group_id: int, req: GroupUpdates, username: str = De
 def delete_group_route(group_id: int, req: GroupUpdates = None, username: str = Depends(get_current_user), db = Depends(get_db)):
     deleteGroup(db = db, group_id = group_id)
     return {"status": "ok"}
+
+@app.get("/get_event_details/{event_id}")
+def get_event_details_route(event_id: int, username: str = Depends(get_current_user), db = Depends(get_db)):
+    results = db.getEventDetails(event_id = event_id, as_json = True)
+    if results is False or results is None:
+        return 0
+    return results
+
+@app.post("/update_event/{event_id}")
+def update_event_route(event_id: int, req: EventUpdateRequest, username: str = Depends(get_current_user), db = Depends(get_db)):
+    updateEventFull
+    
