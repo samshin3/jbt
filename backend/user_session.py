@@ -200,7 +200,7 @@ if __name__ == "__main__":
                 "item_name": "New Edit",
                 "category": "Testing",
                 "amount_due": 3300,
-                "owed_by": ["Sam", "Tristan", "Michelle"]
+                "owed_by": ["Sam", "Tristan"]
             }
         }
     ]
