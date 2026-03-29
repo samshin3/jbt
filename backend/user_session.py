@@ -115,31 +115,28 @@ def summarizeAmountDue(db: DatabaseManager, group_id: int) -> dict[str, float]:
 
 def updateEventFull(db: DatabaseManager, group_id: int, event_id: int, event_edits: EventUpdates, transaction_edits: List[TransactionEdits]):
     
-    old_data = db.getEventDetails(event_id = event_id)
+    old_data = db.getEventDetails(event_id = event_id, as_json = False)
 
     db.updateEvent(event_id = event_id, event_updates = event_edits)
-
     for transaction in transaction_edits:
-        old_transaction = old_data[old_data["subgroup_id"] == transaction["subgroup_id"]]
-        old_transaction_data = {
-            "ower_list": old_transaction["owed_by"][0].split(","),
-            "owed_amount": old_transaction["amount_due"][0],
-            "paid_by": old_transaction["paid_by"][0],
-            "category": old_transaction["category"][0]
-        }
 
         match transaction["action"]:
             case "new":
+                print("submit transaction called")
                 submitTransaction(db = db, transaction = transaction["transaction_data"],
-                                  group_id = group_id, event_id = event_id, paid_by = event_edits["paid_by"])
+                                  group_id = group_id, event_id = event_id, paid_by = event_edits["paid_by"] if "paid_by" in event_edits.keys() else old_data["paid_by"][0])
 
             # "delete" action is separate from removing an owed_by member    
             case "delete":
                 db.deleteTransaction(by = "subgroup_id", id_value = transaction["subgroup_id"])
 
             case "update":
-                updateOwerRecords(db)
+                old_transaction = old_data[old_data["subgroup_id"] == transaction["subgroup_id"]]
+                old_transaction_data = old_transaction.loc[0, ["owed_by", "amount_due", "item_name", "category"]].to_dict()
+                updateOwerRecords(db = db, old_data = old_transaction_data, new_data = transaction["transaction_data"], 
+                                  group_id = group_id, event_id = event_id, subgroup_id = transaction["subgroup_id"])
 
+# Helper function, compares transaction data and updates, or inserts new transaction record
 def updateOwerRecords(db: DatabaseManager, old_data: TransactionData, new_data: TransactionData,
                       group_id: int, event_id: int, subgroup_id: int) -> None:
 
@@ -154,14 +151,19 @@ def updateOwerRecords(db: DatabaseManager, old_data: TransactionData, new_data: 
 
     # Update / add details for owed_by
     for member in new_data["owed_by"]:
+
         if member not in old_data["owed_by"]:
+            print("add transaction called")
             db.addTransaction(group_id = group_id, event_id = event_id, item_name = new_data["item_name"],
                               amount_due = new_amount, owed_by = member, category = new_data["category"], subgroup = subgroup_id)
         else:
-            db.updateTransaction(subgroup_id = subgroup_id, transaction_updates = new_data)
+            update_info = new_data
+            update_info["owed_by"] = member
+            print(update_info)
+            db.updateTransaction(subgroup_id = subgroup_id, update_info = update_info)
                 
 # Updates users owed amounts as well
-def deleteEvent(db: DatabaseManager, event_id: int, group_id: int) -> None:
+def deleteEvent(db: DatabaseManager, event_id: int) -> None:
     transactions = db.getTransactions(by = 'event_id', id_value = event_id)
     paid_by = db.getEvent(event_id = event_id)["paid_by"][0]
     recon = transactions.groupby("owed_by")["amount_due"].sum().reset_index()
@@ -175,15 +177,38 @@ def deleteEvent(db: DatabaseManager, event_id: int, group_id: int) -> None:
 
 
 if __name__ == "__main__":
+
     db = DatabaseManager()
     test_console = False
 
-    updateEventFull(db = db, group_id = 6, event_id = 14)
+    event_edits = {
+        # "event_name": "new_name",
+        # "description": "new_description",
+        # "currency": "SGD",
+        # "paid_by": "Michelle"
+    }
 
-    table_name = "events"
-    group_id = 6
+    transaction_updates = [
+        # {
+        #     "subgroup_id": 57,
+        #     "action": "delete"
+        # },
+        {
+            "subgroup_id": 75,
+            "action": "update",
+            "transaction_data": {
+                "item_name": "New Edit",
+                "category": "Testing",
+                "amount_due": 3300,
+                "owed_by": ["Sam", "Tristan"]
+            }
+        }
+    ]
 
-    print(None)
+
+    updateEventFull(db = db, group_id = 6, event_id = 19, event_edits=event_edits, transaction_edits=transaction_updates)
+
+    print(db.getEventDetails(19, as_json = False))
 
     if test_console:
         while True:
