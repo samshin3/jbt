@@ -122,7 +122,7 @@ def updateEventFull(db: DatabaseManager, group_id: int, event_id: int, event_edi
 
         match transaction["action"]:
             case "new":
-                print("submit transaction called")
+
                 submitTransaction(db = db, transaction = transaction["transaction_data"],
                                   group_id = group_id, event_id = event_id, paid_by = event_edits["paid_by"] if "paid_by" in event_edits.keys() else old_data["paid_by"][0])
 
@@ -153,13 +153,11 @@ def updateOwerRecords(db: DatabaseManager, old_data: TransactionData, new_data: 
     for member in new_data["owed_by"]:
 
         if member not in old_data["owed_by"]:
-            print("add transaction called")
             db.addTransaction(group_id = group_id, event_id = event_id, item_name = new_data["item_name"],
                               amount_due = new_amount, owed_by = member, category = new_data["category"], subgroup = subgroup_id)
         else:
             update_info = new_data
             update_info["owed_by"] = member
-            print(update_info)
             db.updateTransaction(subgroup_id = subgroup_id, update_info = update_info)
                 
 # Updates users owed amounts as well
@@ -182,17 +180,17 @@ if __name__ == "__main__":
     test_console = False
 
     event_edits = {
-        # "event_name": "new_name",
-        # "description": "new_description",
-        # "currency": "SGD",
-        # "paid_by": "Michelle"
+        "event_name": "new_name",
+        "description": "new_description",
+        "currency": "SGD",
+        "paid_by": "Michelle"
     }
 
     transaction_updates = [
-        # {
-        #     "subgroup_id": 57,
-        #     "action": "delete"
-        # },
+        {
+            "subgroup_id": 57,
+            "action": "delete"
+        },
         {
             "subgroup_id": 75,
             "action": "update",
@@ -208,7 +206,7 @@ if __name__ == "__main__":
 
     updateEventFull(db = db, group_id = 6, event_id = 19, event_edits=event_edits, transaction_edits=transaction_updates)
 
-    print(db.getEventDetails(19, as_json = False))
+    print(db.getEventDetails(19, as_json = True))
 
     if test_console:
         while True:

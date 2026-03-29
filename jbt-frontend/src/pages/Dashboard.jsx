@@ -23,6 +23,7 @@ function Avatar({ name, size = 32 }) {
   )
 }
 
+
 function Sidebar({ groups, selectedGroup, onSelectGroup, onGroupCreated }) {
   const [showCreate, setShowCreate] = useState(false)
   const [newGroup, setNewGroup] = useState({ name: '', start: '', end: '', location: '', description: '' })
@@ -197,7 +198,10 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
 
   const formatDate = (d) => {
     if (!d) return ''
-    const date = new Date(d)
+    
+    const [year, month, day] = d.split("-").map(Number)
+
+    const date = new Date(year, month - 1, day)
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   }
 
@@ -218,6 +222,7 @@ export default function Dashboard({ currentUser, onOpenSettings, onAddTransactio
       No groups found. Create one to get started.
     </div>
   )
+
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f4f0' }}>
