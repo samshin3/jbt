@@ -10,7 +10,7 @@ import { getGroups, getGroupMembers, getGroupBalance, createGroup, getTotalSpent
 // ───────────────────────────────────────────────────────────────────────────
 
 function Avatar({ name, size = 32 }) {
-  const colors = ['#FFB347', '#87CEEB', '#DDA0DD', '#98FB98', '#F08080']
+  const colors = ['#FFB347', '#3199c2', '#DDA0DD', '#98FB98', '#F08080']
   const color = colors[name.charCodeAt(0) % colors.length]
   return (
     <div style={{
@@ -137,7 +137,7 @@ function Sidebar({ groups, selectedGroup, onSelectGroup, onGroupCreated }) {
   )
 }
 
-export default function Dashboard({ currentUser, onOpenSettings, onAddTransaction, onSelectGroup }) {
+export default function Dashboard({ currentUser, selectedGroup: initialGroup, onSelectGroup, onOpenSettings, onAddTransaction, onEditEvent, refreshKey }) {
   const [groups, setGroups] = useState([])
   const [selectedGroup, setSelectedGroup] = useState(null)
   const [members, setMembers] = useState([])

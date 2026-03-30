@@ -129,6 +129,26 @@ export async function createEvent(groupId, { event_name, description, currency, 
   return await res.json()
 }
 
+export async function getEventData(eventId) {
+  const res = await fetch(`${BASE_URL}/get_event/${eventId}`, {
+    headers: authHeaders()
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to fetch event data")
+  return await res.json()
+}
+
+export async function updateEvent(payload) {
+  const res = await fetch(`${BASE_URL}/update_event`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload)
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Failed to update event")
+  return await res.json()
+}
+
 // ─── Balance ──────────────────────────────────────────────────────────────────
 
 // Returns: { "Michelle": 300, "Joanna": -102, ... }
