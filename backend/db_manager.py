@@ -173,7 +173,7 @@ class DatabaseManager():
                 FROM group_info g
                 JOIN group_members m ON g.group_id = m.group_id
                 WHERE m.username = '{username}' AND
-                NOT g.status_flag = 'deleted'
+                NOT (g.status_flag = 'deleted' OR g.status_flag = 'removed')
                 """
         
         self.cursor.execute(query)

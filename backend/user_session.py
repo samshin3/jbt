@@ -45,8 +45,8 @@ def acceptInvite(db: DatabaseManager, username: str, group_id: int, new_member: 
 
     db.addMemberToGroup(group_id = group_id, username = new_member)
 
-def leaveGroup():
-    pass
+def leaveGroup(db: DatabaseManager, username: str, group_id: int):
+    pass    
 
 
 # transactions is a list of TransactionData dicts with keys: [item_name, category, amount_due, owed_by]
