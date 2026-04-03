@@ -465,7 +465,7 @@ class DatabaseManager():
 
 if __name__ == "__main__":
     session = DatabaseManager()
-    data = session.getEventDetails(event_id=1)
+    data = session.getEventDetails(event_id=13, as_json = True)
     print(data)
     #print(session.runCustomQuery("SELECT * FROM events"))
     #group_id = session.addGroupInfo("Test", "test", 'test', 'test', 'iowa')

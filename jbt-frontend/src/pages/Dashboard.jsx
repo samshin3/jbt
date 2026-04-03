@@ -4,9 +4,10 @@ import { getGroups, getGroupMembers, getGroupBalance, createGroup, getTotalSpent
 // ─── API functions used in this file ───────────────────────────────────────
 // getGroups()                          → returns array of group objects
 // getGroupMembers(groupId)             → returns array of member objects
-// getGroupTransactions(groupId)        → returns array of transaction objects
 // getGroupBalance(groupId)             → returns dict { username: amount }
 // createGroup(name, start, end, location, description) → returns { group_id }
+// getTotalSpent(groupId)               → returns total spent amount
+// getEventsSummary(groupId)            → returns array of event summary objects
 // ───────────────────────────────────────────────────────────────────────────
 
 function Avatar({ name, size = 32 }) {
@@ -23,7 +24,6 @@ function Avatar({ name, size = 32 }) {
   )
 }
 
-
 function Sidebar({ groups, selectedGroup, onSelectGroup, onGroupCreated }) {
   const [showCreate, setShowCreate] = useState(false)
   const [newGroup, setNewGroup] = useState({ name: '', start: '', end: '', location: '', description: '' })
@@ -38,7 +38,7 @@ function Sidebar({ groups, selectedGroup, onSelectGroup, onGroupCreated }) {
       await createGroup(newGroup.name, newGroup.start, newGroup.end, newGroup.location, newGroup.description)
       setNewGroup({ name: '', start: '', end: '', location: '', description: '' })
       setShowCreate(false)
-      onGroupCreated()  // re-fetch groups after creating
+      onGroupCreated()
     } catch (err) {
       setCreateError("Failed to create group")
     } finally {
@@ -147,20 +147,19 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
   const [loadingGroups, setLoadingGroups] = useState(true)
   const [loadingGroupData, setLoadingGroupData] = useState(false)
   const [error, setError] = useState(null)
-
   const [totalSpent, setTotal] = useState([])
 
-  // Fetch groups on mount
+  // Fetch groups on mount and when refreshKey changes
   useEffect(() => {
     fetchGroups()
-  }, [])
+  }, [refreshKey])
 
   // Fetch group detail whenever selected group changes
   useEffect(() => {
     if (!selectedGroup) return
     setSummaryUser(currentUser)
-    fetchGroupData(selectedGroup.group_id, summaryUser.username)
-  }, [selectedGroup?.group_id])
+    fetchGroupData(selectedGroup.group_id)
+  }, [selectedGroup?.group_id, refreshKey])
 
   async function fetchGroups() {
     setLoadingGroups(true)
@@ -168,7 +167,10 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
     try {
       const data = await getGroups()
       setGroups(data)
-      if (data.length > 0) setSelectedGroup(data[0]); onSelectGroup(data[0])
+      if (data.length > 0) {
+        setSelectedGroup(data[0])
+        onSelectGroup(data[0])
+      }
     } catch (err) {
       setError("Failed to load groups")
     } finally {
@@ -198,9 +200,7 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
 
   const formatDate = (d) => {
     if (!d) return ''
-    
     const [year, month, day] = d.split("-").map(Number)
-
     const date = new Date(year, month - 1, day)
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   }
@@ -223,17 +223,15 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
     </div>
   )
 
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f4f0' }}>
       <Sidebar
         groups={groups}
         selectedGroup={selectedGroup}
-        onSelectGroup= {(group) => {
+        onSelectGroup={(group) => {
           setSelectedGroup(group)
           onSelectGroup(group)
-        }
-        }
+        }}
         onGroupCreated={fetchGroups}
       />
 
@@ -333,7 +331,7 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
                   <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}>AMOUNT DUE/OWED</span>
                 </div>
                 {members.filter(m => m.username !== summaryUser).map(member => {
-                  const amount = balances.filter(bal => bal.owed_by === summaryUser && bal.paid_by === member.username)[0].amount || 0
+                  const amount = balances.filter(bal => bal.owed_by === summaryUser && bal.paid_by === member.username)[0]?.amount || 0
                   return (
                     <div key={member.username} style={{
                       display: 'grid', gridTemplateColumns: '1fr 1fr auto',
@@ -383,21 +381,35 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
           <div style={{ background: 'white', borderRadius: '14px', padding: '24px', border: '1px solid #ebebeb' }}>
             <h2 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700' }}>Recent Events</h2>
             <div style={{ borderTop: '1px solid #f0f0f0' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', padding: '10px 0', borderBottom: '1px solid #f0f0f0', gap: '16px' }}>
+              {/* Table header */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto auto', padding: '10px 0', borderBottom: '1px solid #f0f0f0', gap: '16px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa' }}>EVENT NAME</span>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}>DATE ADDED</span>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}>TOTAL</span>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}>PAID BY</span>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#aaa', textAlign: 'right' }}></span>
               </div>
+
               {events.length === 0 && (
                 <p style={{ padding: '20px 0', color: '#aaa', fontSize: '13px' }}>No events yet.</p>
               )}
+
               {events.map((tx, i) => (
-                <div key={tx.event_id || i} style={{
-                  display: 'grid', gridTemplateColumns: '1fr auto auto auto',
-                  padding: '14px 0', borderBottom: '1px solid #f8f8f8', gap: '16px', alignItems: 'center'
-                }}>
-                  <span style={{ fontSize: '14px', fontWeight: '500' }}>{tx.event_name}</span>
+                <div
+                  key={tx.event_id || i}
+                  style={{
+                    display: 'grid', gridTemplateColumns: '1fr auto auto auto auto',
+                    padding: '12px 0', borderBottom: '1px solid #f8f8f8',
+                    gap: '16px', alignItems: 'center'
+                  }}
+                >
+                  <span style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer'}} 
+                    onClick = {()=>onEditEvent(tx, selectedGroup)}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#eaeaea'; e.currentTarget.style.color = 'black'; e.currentTarget.style.borderColor = '#bfbfbf' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#444'; e.currentTarget.style.borderColor = '#f8f8f8' }}
+                    >
+                    {tx.event_name}
+                  </span>
                   <span style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>{tx.upload_date || tx.date}</span>
                   <span style={{ fontSize: '14px', fontWeight: '600', textAlign: 'right' }}>{tx.total}</span>
                   <span style={{ fontSize: '13px', color: '#555', textAlign: 'right' }}>{tx.paid_by}</span>

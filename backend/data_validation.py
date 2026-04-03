@@ -57,7 +57,7 @@ class CreateEventRequest(BaseModel):
 class InviteRequest(BaseModel):
     username: str
 
-class EventUpdateRequest(BaseModel):
+class EventUpdateRequest(TypedDict, total=False):
     group_id: int
     event_updates: EventUpdates
     transaction_updates: List[TransactionEdits]

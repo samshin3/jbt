@@ -129,17 +129,17 @@ export async function createEvent(groupId, { event_name, description, currency, 
   return await res.json()
 }
 
-export async function getEventData(eventId) {
-  const res = await fetch(`${BASE_URL}/get_event/${eventId}`, {
+export async function getEventDetails(eventId) {
+  const res = await fetch(`${BASE_URL}/get_event_details/${eventId}`, {
     headers: authHeaders()
   })
   handleUnauthorized(res)
-  if (!res.ok) throw new Error("Failed to fetch event data")
-  return await res.json()
+  if (!res.ok) throw new Error("Failed to get Event Details")
+    return await res.json()
 }
 
-export async function updateEvent(payload) {
-  const res = await fetch(`${BASE_URL}/update_event`, {
+export async function updateEvent(payload, event_id) {
+  const res = await fetch(`${BASE_URL}/update_event/${event_id}`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload)
@@ -180,3 +180,4 @@ export async function getEventsSummary(groupId) {
   if (!res.ok) throw new Error("Failed to get Events Summary")
     return await res.json()
 }
+

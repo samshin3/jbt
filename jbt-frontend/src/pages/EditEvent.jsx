@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react'
-import { getGroupMembers, getEventData, updateEvent } from '../api/api'
+import { getGroupMembers, getEventDetails, updateEvent } from '../api/api'
 
 // ─── API functions used in this file ────────────────────────────────────────
 // getGroupMembers(groupId)   → [{ username, email, is_owner }, ...]
-// getEventData(eventId)      → { event_name, description, paid_by, currency, event_id,
-//                               transactions: [{ transaction_id, subgroup_id, owed_by,
-//                                               amount_due, item_name, category }] }
+// getEventDetails(eventId)   → { event_id, event_name, paid_by, currency, description,
+//                               transactions: [{ transaction_id, subgroup_id, item_name,
+//                                               category, amount_due, owed_by[] }] }
 // updateEvent(payload)       → { status: "ok" }
+//   payload: {
+//     group_id: int,
+//     event_updates: { event_name?, description?, currency?, paid_by? },
+//     transaction_updates: [
+//       { subgroup_id, action: "delete" },
+//       { subgroup_id, action: "update", transaction_data: { item_name, category, amount_due, owed_by } },
+//       { action: "new", transaction_data: { item_name, category, amount_due, owed_by } }
+//     ]
+//   }
 // ────────────────────────────────────────────────────────────────────────────
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Accommodation', 'Entertainment', 'General', 'Testing']
@@ -14,7 +23,7 @@ const CURRENCIES = ['JPY', 'USD', 'CAD', 'EUR', 'GBP', 'KRW']
 
 const emptyRow = () => ({
   transaction_id: null,
-  subgroup_id: null,       // null = new row
+  subgroup_id: null,    // null = new row not yet in DB
   item_name: '',
   amount_due: '',
   category: 'General',
@@ -60,7 +69,7 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
   async function fetchEventData() {
     setLoadingEvent(true)
     try {
-      const data = await getEventData(event.event_id)
+      const data = await getEventDetails(event.event_id)
 
       const formData = {
         event_name: data.event_name || '',
@@ -80,6 +89,7 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
         owed_by: tx.owed_by || []
       }))
       setRows(existingRows)
+      // Deep copy so original is never mutated
       setOriginalRows(existingRows.map(r => ({ ...r, owed_by: [...r.owed_by] })))
     } catch (err) {
       setError("Failed to load event data")
@@ -119,27 +129,27 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
     const original = originalRows.find(o => o.subgroup_id === row.subgroup_id)
     if (!original) return true
     return (
-      row.item_name  !== original.item_name  ||
-      row.amount_due !== original.amount_due ||
-      row.category   !== original.category   ||
+      row.item_name         !== original.item_name  ||
+      String(row.amount_due) !== String(original.amount_due) ||
+      row.category          !== original.category   ||
       JSON.stringify([...row.owed_by].sort()) !== JSON.stringify([...original.owed_by].sort())
     )
   }
 
-  function buildEventEdits() {
+  function buildEventUpdates() {
     if (!originalForm) return {}
-    const edits = {}
-    if (form.event_name  !== originalForm.event_name)  edits.event_name  = form.event_name
-    if (form.description !== originalForm.description) edits.description = form.description
-    if (form.currency    !== originalForm.currency)    edits.currency    = form.currency
-    if (form.paid_by     !== originalForm.paid_by)     edits.paid_by     = form.paid_by
-    return edits
+    const updates = {}
+    if (form.event_name  !== originalForm.event_name)  updates.event_name  = form.event_name
+    if (form.description !== originalForm.description) updates.description = form.description
+    if (form.currency    !== originalForm.currency)    updates.currency    = form.currency
+    if (form.paid_by     !== originalForm.paid_by)     updates.paid_by     = form.paid_by
+    return updates
   }
 
   function buildTransactionUpdates() {
     const updates = []
 
-    // Deleted rows — in original but not in current rows
+    // Deleted rows — existed originally but no longer in rows
     originalRows.forEach(original => {
       const stillExists = rows.find(r => r.subgroup_id === original.subgroup_id)
       if (!stillExists) {
@@ -150,7 +160,7 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
       }
     })
 
-    // Updated rows — exist in both, but values changed
+    // Updated rows — exist in both but values changed
     rows.forEach(row => {
       if (row.subgroup_id !== null && rowHasChanged(row)) {
         updates.push({
@@ -170,7 +180,6 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
     rows.forEach(row => {
       if (row.subgroup_id === null && row.item_name.trim() && row.amount_due) {
         updates.push({
-          subgroup_id: null,
           action: "new",
           transaction_data: {
             item_name: row.item_name,
@@ -190,27 +199,26 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
       setError("Event name is required")
       return
     }
-
-    const event_edits = buildEventEdits()
+    const group_id = group.group_id
+    const event_updates = buildEventUpdates()
     const transaction_updates = buildTransactionUpdates()
 
-    // Nothing changed
-    if (Object.keys(event_edits).length === 0 && transaction_updates.length === 0) {
+    if (Object.keys(event_updates).length === 0 && transaction_updates.length === 0) {
       onBack()
       return
     }
 
     const payload = {
-      group_id: group.group_id,
-      event_id: event.event_id,
-      event_edits,
+      group_id,
+      event_updates,
       transaction_updates
     }
-
+    
     setSubmitting(true)
     setError(null)
     try {
-      await updateEvent(payload)
+      console.log(JSON.stringify(payload))
+      await updateEvent(payload, event.event_id)
       onSubmit()
     } catch (err) {
       setError("Failed to save changes")
@@ -235,12 +243,12 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
-          <div style={{ padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #111', background: '#111', color: 'white', fontSize: '13px', fontWeight: '500' }}>
-            {group?.group_name || 'Group'}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #111', background: '#111', color: 'white', fontSize: '13px', fontWeight: '500' }}>
+              {group?.group_name || 'Group'}
+            </div>
           </div>
-          <span style={{ fontSize: '12px', color: '#aaa', fontWeight: '500' }}>
-            Editing event
-          </span>
+          <span style={{ fontSize: '12px', color: '#aaa', fontWeight: '500' }}>Editing event</span>
         </div>
 
         {isLoading ? (
@@ -304,11 +312,10 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
                   key={row.subgroup_id ?? `new-${index}`}
                   style={{
                     display: 'grid', gridTemplateColumns: '1fr 90px 120px 1fr 36px',
-                    gap: '10px', padding: '8px 0', borderBottom: '1px solid #f8f8f8',
+                    gap: '10px', padding: '8px 0 8px 8px', borderBottom: '1px solid #f8f8f8',
                     alignItems: 'start',
-                    // Green left border for new rows
+                    // Green left border for new rows so user can tell them apart
                     borderLeft: row.subgroup_id === null ? '3px solid #4CAF50' : '3px solid transparent',
-                    paddingLeft: '6px'
                   }}
                 >
                   <input
@@ -336,6 +343,7 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
 
+                  {/* Owed By chips */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     <button
                       onClick={() => selectAllOwedBy(index)}
