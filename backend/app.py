@@ -18,7 +18,10 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = ["https://jbt-cyan.vercel.app"],
+    allow_origins = [
+        "https://jbt-cyan.vercel.app",   # your frontend
+        "http://localhost:5173",          # local dev
+    ],
     allow_credentials = True,
     allow_methods = ["*"],
     allow_headers = ["*"],
