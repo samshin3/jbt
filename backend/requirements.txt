@@ -4,6 +4,7 @@ anyio==4.13.0
 ecdsa==0.19.2
 fastapi==0.135.3
 idna==3.11
+libsql==0.1.11
 numpy==2.4.4
 pandas==3.0.2
 pyasn1==0.6.3
