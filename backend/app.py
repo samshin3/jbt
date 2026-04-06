@@ -54,8 +54,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @app.get("/")
 def root():
-    url = os.getenv("TURSO_DATABASE_URL", "NOT SET")
-    return {"url_set": url != "NOT SET", "url_prefix": url[:10] if url != "NOT SET" else "none"}
+    url = DatabaseManager()
+    url = url.url
+    return {"url_set": url}
 
 @app.post("/login")
 def login(form: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
