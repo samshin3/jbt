@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8000"
+const BASE_URL = "https://jbt-a21u.vercel.app/"
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 function authHeaders() {
