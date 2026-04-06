@@ -3,6 +3,10 @@ import pandas as pd
 from typing import Literal
 from data_validation import GroupUpdates, TransactionUpdates, EventUpdates, validActions, inviteStatus
 import os
+import certifi
+
+# Force Python to use certifi's bundle
+os.environ['SSL_CERT_FILE'] = certifi.where()
 
 class DatabaseManager():
 
@@ -11,8 +15,8 @@ class DatabaseManager():
     def __init__(self):
         url = os.getenv("JBT_DATABASE_TURSO_DATABASE_URL")
 
-        url.replace("libsql://", "https://")
-        url.replace("wss://", "https://")
+        url = url.replace("libsql://", "https://")
+        url = url.replace("wss://", "https://")
 
         auth_token = os.getenv("JBT_DATABASE_TURSO_AUTH_TOKEN")
         self.client = libsql_client.create_client_sync(

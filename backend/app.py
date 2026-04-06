@@ -54,9 +54,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @app.get("/")
 def root():
-    url = DatabaseManager()
-    url = url.url
-    return {"url_set": url}
+    return {"url_set": "none"}
 
 @app.post("/login")
 def login(form: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
