@@ -10,6 +10,10 @@ class DatabaseManager():
 
     def __init__(self):
         url = os.getenv("JBT_DATABASE_TURSO_DATABASE_URL")
+
+        if url and url.startswith("wss://"):
+            url = url.replace("wss://", "https://")
+            
         auth_token = os.getenv("JBT_DATABASE_TURSO_AUTH_TOKEN")
         self.client = libsql_client.create_client_sync(
             url=url,
