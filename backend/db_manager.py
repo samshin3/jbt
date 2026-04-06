@@ -9,8 +9,8 @@ class DatabaseManager():
     IdCategories = Literal["group_id", "event_id", "transaction_id", "subgroup_id"]
 
     def __init__(self):
-        url = os.getenv("TURSO_DATABASE_URL")
-        auth_token = os.getenv("TURSO_AUTH_TOKEN")
+        url = os.getenv("JBT_DATABASE_TURSO_DATABASE_URL")
+        auth_token = os.getenv("JBT_DATABASE_TURSO_AUTH_TOKEN")
         self.client = libsql_client.create_client_sync(
             url=url,
             auth_token=auth_token
