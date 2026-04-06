@@ -17,6 +17,7 @@ idna==3.11
 imagesize==2.0.0
 Jinja2==3.1.6
 libsql-client==0.3.1
+libsql-experimental==0.0.55
 MarkupSafe==3.0.3
 multidict==6.7.1
 numpy==2.4.4

@@ -53,8 +53,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 # ─── Routes ──────────────────────────────────────────────────────────────────
 
 @app.get("/")
-def health_check():
-    return "API is running normally!"
+def root():
+    url = os.getenv("TURSO_DATABASE_URL", "NOT SET")
+    return {"url_set": url != "NOT SET", "url_prefix": url[:10] if url != "NOT SET" else "none"}
 
 @app.post("/login")
 def login(form: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
