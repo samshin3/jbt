@@ -1,4 +1,4 @@
-import libsql_experimental as libsql_client
+import libsql_client
 import pandas as pd
 from typing import Literal
 from data_validation import GroupUpdates, TransactionUpdates, EventUpdates, validActions, inviteStatus
