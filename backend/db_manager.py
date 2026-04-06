@@ -12,6 +12,7 @@ class DatabaseManager():
         url = os.getenv("JBT_DATABASE_TURSO_DATABASE_URL")
 
         url.replace("libsql://", "https://")
+        url.replace("wss://", "https://")
 
         auth_token = os.getenv("JBT_DATABASE_TURSO_AUTH_TOKEN")
         self.client = libsql_client.create_client_sync(
