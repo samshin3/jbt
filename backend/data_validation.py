@@ -2,6 +2,7 @@ from typing import Literal, TypedDict, List
 from pydantic import BaseModel
 
 validActions = Literal["delete", "update", "new"]
+inviteStatus = Literal["declined", "accepted", "pending", "revoked"]
 
 class GroupUpdates(TypedDict, total=False):
     group_name: str
@@ -61,3 +62,4 @@ class EventUpdateRequest(TypedDict, total=False):
     group_id: int
     event_updates: EventUpdates
     transaction_updates: List[TransactionEdits]
+

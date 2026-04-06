@@ -137,7 +137,7 @@ function Sidebar({ groups, selectedGroup, onSelectGroup, onGroupCreated }) {
   )
 }
 
-export default function Dashboard({ currentUser, selectedGroup: initialGroup, onSelectGroup, onOpenSettings, onAddTransaction, onEditEvent, refreshKey }) {
+export default function Dashboard({ currentUser, selectedGroup: initialGroup, onSelectGroup, onOpenSettings, onAddTransaction, onEditEvent, onCheckInvites, refreshKey }) {
   const [groups, setGroups] = useState([])
   const [selectedGroup, setSelectedGroup] = useState(null)
   const [members, setMembers] = useState([])
@@ -247,7 +247,11 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
             <span style={{ fontSize: '13px', color: '#888' }}>Groups</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#888' }}>•••</button>
+            <button style={{
+              padding: '8px 18px', background: '#111', color: 'white', border: 'none',
+              borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+            }}>Pending Invites</button>
+
             <button style={{
               padding: '8px 18px', background: '#111', color: 'white', border: 'none',
               borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
@@ -360,7 +364,7 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
                     <Avatar name={member.username} size={38} />
                     <div>
                       <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>
-                        {member.username} {member.is_owner && <span style={{ color: '#888', fontWeight: '400' }}>(Owner)</span>}
+                        {member.username} {Boolean(member.is_owner) && <span style={{ color: '#888', fontWeight: '400' }}>(Owner)</span>}
                       </p>
                       <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>{member.email}</p>
                     </div>

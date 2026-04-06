@@ -74,15 +74,7 @@ def create_group_route(req: CreateGroupRequest, username: str = Depends(get_curr
 @app.get("/get_members/{group_id}")
 def get_members_route(group_id: int, username: str = Depends(get_current_user), db = Depends(get_db)):
     members = db.getGroupMembers(group_id)
-    result = []
-    for member in members:
-        user_df = db.getUserData(member)
-        if user_df is not None and len(user_df) > 0:
-            result.append({
-                "username": member,
-                "email": user_df["email"][0],
-                "is_owner": False
-            })
+    
     return members.to_dict(orient = "records")
 
 
@@ -91,7 +83,9 @@ def invite_member_route(group_id: int, req: InviteRequest, username: str = Depen
     user_df = db.getUserData(req.username)
     if user_df is None or len(user_df) == 0:
         raise HTTPException(status_code = 404, detail = "User not found")
-    acceptInvite(db, username, group_id, req.username)
+    
+    inviteMembersToGroup(db = db, group_id = group_id, inviter = username, invitee = req.username)
+
     return {"status": "ok"}
 
 @app.get("/get_event_summary/{group_id}")

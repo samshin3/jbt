@@ -11,10 +11,11 @@ def createGroup(db: DatabaseManager, username: str, group_name: str, start: str,
 
     if start_date > end_date:
         return False
-
+    
     group_id = db.addGroupInfo(group_name = group_name, created_by = username,
                                start_date = start, end_date = end, location = location, description = description)
-    db.addMemberToGroup(group_id, username)
+
+    db.addMemberToGroup(group_id = group_id, username = username, is_owner = True)
 
     return group_id
 
@@ -35,19 +36,37 @@ def deleteGroup(db: DatabaseManager, group_id: int) -> None:
     db.deleteGroup(group_id = group_id)
 
 
-def inviteMembersToGroup():
-    pass
-
+def inviteMembersToGroup(db: DatabaseManager, group_id: int, inviter: str, invitee: str) -> None:
+    if not db.userExists(username = invitee):
+        return
+    
+    if db.alreadyInvited(group_id = group_id, invitee = invitee):
+        return
+    
+    if db.userIsMember(group_id = group_id, username = invitee):
+        return
+    
+    db.createInvite(invitee = invitee, invited_by = inviter, group_id = group_id)
 
 def acceptInvite(db: DatabaseManager, username: str, group_id: int, new_member: str) -> None:
-    if db.userIsMember(group_id, new_member):
+    if db.userIsMember(group_id = group_id, new_member = new_member):
         return
 
     db.addMemberToGroup(group_id = group_id, username = new_member)
+    db.updateInvite()
 
-def leaveGroup(db: DatabaseManager, username: str, group_id: int):
-    pass    
+def leaveGroup(db: DatabaseManager, username: str, group_id: int) -> None:
+    
+    # User already left
+    if not db.userIsMember(group_id = group_id, username = username):
+        return
 
+    db.removeMember(group_id = group_id, username = username)
+    
+    # Changes group owner to next oldest member, in alphabetical order
+
+    if db.userIsGroupOwner(group_id = group_id, username = username):
+        db.changeGroupOwner(group_id = group_id)
 
 # transactions is a list of TransactionData dicts with keys: [item_name, category, amount_due, owed_by]
 def createEvent(db: DatabaseManager, username: str, group_id: int, event_name: str,
@@ -204,9 +223,7 @@ if __name__ == "__main__":
     ]
 
 
-    updateEventFull(db = db, group_id = 6, event_id = 19, event_edits=event_edits, transaction_edits=transaction_updates)
-
-    print(db.getEventDetails(19, as_json = True))
+    leaveGroup(db = db, username = "Sam", group_id = 6)
 
     if test_console:
         while True:

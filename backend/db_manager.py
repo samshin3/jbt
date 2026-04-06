@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 from typing import Literal
-from data_validation import GroupUpdates, TransactionUpdates, EventUpdates, validActions
+from data_validation import GroupUpdates, TransactionUpdates, EventUpdates, validActions, inviteStatus
 
 class DatabaseManager():
 
@@ -45,6 +45,11 @@ class DatabaseManager():
         self.cursor.execute(query)
         user_data = self.convertToDataFrame()
         return user_data
+
+    def userExists(self, username: str) -> bool:
+        query = f"SELECT username FROM users WHERE username = '{username}'"
+        self.cursor.execute(query)
+        return self.cursor.fetchone() is not None
 
     # Manage "group" table
     def addGroupInfo(self, group_name: str, created_by: str,
@@ -129,20 +134,54 @@ class DatabaseManager():
         self.connection.commit()
 
     # Manage "group_members" table
+
     def userIsMember(self, group_id: int, username: str) -> bool:
         query = f"""
                 SELECT COUNT(*) FROM group_members
                 WHERE group_id = {group_id} AND
-                username = '{username}'
+                username = '{username}' AND status_flag = 'active'
                 """
 
         # Checks if entry exists
         result = self.cursor.execute(query).fetchone()
         return result[0] > 0
-
-    def addMemberToGroup(self, group_id: int, username: str) -> None:
-        query = f" INSERT INTO group_members (group_id, username, date_joined) VALUES ({group_id},'{username}', date('now'))"
+    
+    def userIsGroupOwner(self, group_id: int, username: str) -> bool:
+        query = f"""
+                SELECT is_owner FROM group_members
+                WHERE group_id = {group_id} AND username = '{username}'
+                """
+        
         self.cursor.execute(query)
+        is_owner = self.cursor.fetchone()
+
+        return bool(is_owner[0])
+    
+    # Check if user was a previous member
+    def userWasFormerGroupMember(self, group_id: int, username: str) -> bool:
+        query = f"""
+                SELECT username FROM group_members
+                WHERE group_id = {group_id} AND username = '{username}'
+                """
+        self.cursor.execute(query)
+        return self.cursor.fetchone() is not None
+
+    def addMemberToGroup(self, group_id: int, username: str, is_owner: bool = False) -> None:
+        if self.userWasFormerGroupMember(group_id = group_id, username = username):
+            query = f"""
+                    UPDATE group_members
+                    SET status_flag = 'active'
+                    WHERE group_id = {group_id} AND username = '{username}'
+                    """
+        else: 
+            query = f"""
+                    INSERT INTO group_members 
+                    (group_id, username, date_joined, is_owner) 
+                    VALUES 
+                    ({group_id},'{username}', date('now'), {int(is_owner)})
+                    """
+        self.cursor.execute(query)
+        self.connection.commit()
 
     def getGroupMembers(self, group_id: int) -> pd.DataFrame:
         query = f"""
@@ -154,6 +193,50 @@ class DatabaseManager():
         members = self.convertToDataFrame()
 
         return members
+    
+    def removeMember(self, group_id: int, username: str) -> None:
+        query = f"""
+                UPDATE group_members
+                SET status_flag = 'inactive'
+                WHERE group_id = {group_id} AND username = '{username}'
+                """
+        
+        self.cursor.execute(query)
+        self.connection.commit()
+
+    def changeGroupOwner(self, group_id: int, new_owner: str = None) -> None:
+
+        if not self.userIsMember(group_id = group_id, username = new_owner) and new_owner is not None:
+            return
+        
+        remove_query = f"""
+                    UPDATE group_members 
+                    SET is_owner = FALSE
+                    WHERE group_id = {group_id} AND is_owner = TRUE
+                    """
+        
+        # Automatically assigns oldest member, in alphabetical order, as new owner
+        if new_owner is None:
+            add_query = f"""
+                        UPDATE group_members
+                        SET is_owner = TRUE
+                        WHERE username = (
+                            SELECT username FROM group_members
+                            WHERE group_id = {group_id} AND status_flag = 'active'
+                            ORDER BY date_joined ASC, username ASC
+                            LIMIT 1
+                        )
+                        """
+        else:
+            add_query = f"""
+                        UPDATE group_members
+                        SET is_owner = TRUE
+                        WHERE group_id = {group_id} AND username = '{new_owner}'
+                        """
+            
+        self.cursor.execute(remove_query)
+        self.cursor.execute(add_query)
+        self.connection.commit()
 
     def getUsersGroups(self, username: str) -> pd.DataFrame:
         
@@ -408,8 +491,84 @@ class DatabaseManager():
         summary = self.convertToDataFrame()
 
         return summary
+
+    # Invite Management
+    def alreadyInvited(self, group_id: int, invitee: str) -> bool:
+        query = f"""
+                SELECT group_id FROM pending_invites 
+                WHERE group_id = {group_id} AND invitee = '{invitee}'
+                AND status_flag IN ('accepted', 'pending')
+                """
+        self.cursor.execute(query)
+        return self.cursor.fetchone() is not None
+
+    def createInvite(self, invitee: str, invited_by: str, group_id: int) -> None:
+        query = f"""
+                INSERT INTO pending_invites(
+                    invitee,
+                    invited_by,
+                    group_id,
+                    status_flag,
+                    created_date
+                ) VALUES (
+                    '{invitee}',
+                    '{invited_by}',
+                    '{group_id}',
+                    'pending',
+                    date('now')
+                )
+                """
+        self.cursor.execute(query)
+        self.connection.commit()
+
+    def updateInvite(self, group_id: int, invitee: str, status: inviteStatus) -> None:
+        query = f"""
+                UPDATE pending_invites
+                SET status_flag = '{status}'
+                WHERE group_id = {group_id} AND invitee = '{invitee}'
+                """
+        
+        self.cursor.execute(query)
+        self.connection.commit()
+        
+    def deleteInvite(self, invitee: str, group_id: int, revoked_by: str) -> None:
+        query = f"""
+                UPDATE pending_invites 
+                SET status_flag = 'revoked', revoked_by = '{revoked_by}'
+                WHERE invitee = '{invitee}' AND group_id = {group_id}
+                """
+        
+        self.cursor.execute(query)
+        self.connection.commit()
+
+    def getPendingInvitesByGroup(self, group_id: int) -> pd.DataFrame:
+        query = f"""
+                SELECT invite_id, invitee, invited_by, created_date FROM pending_invites
+                WHERE status_flag = 'pending' AND group_id = {group_id}
+                """
+        
+        self.cursor.execute(query)
+        data = self.convertToDataFrame()
+
+        return data
     
-    # user_paid_amounts table functions: deprecated since 28 March, 2026. Replaced with getGroupOwedSummary
+    def getPendingInvitesByUser(self, username: int) -> pd.DataFrame:
+        query = f"""
+                SELECT i.invite_id, i.invited_by, i.created_date, 
+                g.group_name, g.description, g.status_flag, g.start_date, g.end_date, g.location
+                FROM pending_invites i
+                LEFT JOIN group_info g ON i.group_id = g.group_id
+                WHERE invitee = '{username}'
+                """
+
+        self.cursor.execute(query)
+        data = self.convertToDataFrame()
+
+        return data
+
+
+    # user_paid_amounts table functions: deprecated since 28 March, 2026. Summaries are now calculated directly with the transactions table
+    # using getGroupOwedSummary
 
     # def addUserPaidRelations(self, group_id: int, paid_by: str,
     #                          owed_by: str) -> None:
@@ -465,16 +624,5 @@ class DatabaseManager():
 
 if __name__ == "__main__":
     session = DatabaseManager()
-    data = session.getEventDetails(event_id=13, as_json = True)
-    print(data)
-    #print(session.runCustomQuery("SELECT * FROM events"))
-    #group_id = session.addGroupInfo("Test", "test", 'test', 'test', 'iowa')
-    #session.addUser("sam", "sam@uwaterloo.ca")
-    #print(session.getGroupMembers(3))
-    # while True:
-    #     query = input("Query: ")
-    #     results, headers = session.runCustomQuery(query)
-    #     if headers:
-    #         df = pd.DataFrame(results,columns = headers)
-    #         print(df)
-        
+    #session.changeGroupOwner(group_id = 6, new_owner = 'Sam')
+    print(session.getGroupMembers(group_id = 6))
