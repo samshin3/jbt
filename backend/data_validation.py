@@ -1,5 +1,5 @@
 from typing import Literal, TypedDict, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 validActions = Literal["delete", "update", "new"]
 inviteStatus = Literal["declined", "accepted", "pending", "revoked"]
@@ -28,7 +28,7 @@ class TransactionData(TypedDict):
     item_name: str
     category: str
     amount_due: float
-    owed_by: List[str]
+    owed_by: List[str] = Field(..., min_length = 1)
 
 class TransactionEdits(TypedDict, total=False):
     subgroup_id: int = None
@@ -46,7 +46,7 @@ class TransactionInput(BaseModel):
     item_name: str
     amount_due: float
     category: str
-    owed_by: List[str]
+    owed_by: List[str] = Field(..., min_length = 1)
 
 class CreateEventRequest(BaseModel):
     event_name: str
@@ -63,3 +63,5 @@ class EventUpdateRequest(TypedDict, total=False):
     event_updates: EventUpdates
     transaction_updates: List[TransactionEdits]
 
+class RequestStatus(TypedDict, total=False):
+    status: Literal["success", "failed"]

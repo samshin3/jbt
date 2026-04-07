@@ -2,7 +2,7 @@ from db_manager import DatabaseManager
 import pandas as pd
 from datetime import date
 from typing import List
-from data_validation import TransactionData, EventUpdates, GroupUpdates, TransactionEdits
+from data_validation import TransactionData, EventUpdates, GroupUpdates, TransactionEdits, RequestStatus
 
 # Date must be iso format string "YYYY-MM-dd"
 def createGroup(db: DatabaseManager, username: str, group_name: str, start: str, end: str, location: str, description: str = None) -> int:
@@ -71,18 +71,27 @@ def leaveGroup(db: DatabaseManager, username: str, group_id: int) -> None:
 # transactions is a list of TransactionData dicts with keys: [item_name, category, amount_due, owed_by]
 def createEvent(db: DatabaseManager, username: str, group_id: int, event_name: str,
                 event_desc: str, currency: str, transactions: List[TransactionData], paid_by: str = None) -> None:
+
     if paid_by is None:
         paid_by = username
 
     event_id = db.addEvent(event_name = event_name, description = event_desc, group_id = group_id,
                            uploaded_by = username, currency = currency, paid_by = paid_by)
-    
-    for transaction in transactions:
-        submitTransaction(db = db, transaction = transaction, group_id = group_id, event_id = event_id, paid_by = paid_by)
+    try:
+        for transaction in transactions:
+            submitTransaction(db = db, transaction = transaction, group_id = group_id, event_id = event_id, paid_by = paid_by)
+
+    except ZeroDivisionError:
+        # Undo Transaction Submission
+        db.deleteEvent(event_id = event_id)
+        db.deleteTransaction(by = "event_id", id_value = event_id)
+
         
 def submitTransaction(db: DatabaseManager, transaction: TransactionData, group_id: int, event_id: int, paid_by: str) -> None:
 
     split_num = len(transaction["owed_by"])
+    if split_num == 0:
+        raise ZeroDivisionError
     amount_per_person = round(transaction["amount_due"] / split_num, 2)
     isFirstEntry = True
     subgroupID = None
@@ -132,28 +141,30 @@ def summarizeAmountDue(db: DatabaseManager, group_id: int) -> dict[str, float]:
 
     return amount_due.to_dict(orient = "records")
 
-def updateEventFull(db: DatabaseManager, group_id: int, event_id: int, event_edits: EventUpdates, transaction_edits: List[TransactionEdits]):
+def updateEventFull(db: DatabaseManager, group_id: int, event_id: int, event_edits: EventUpdates, transaction_edits: List[TransactionEdits]) -> RequestStatus:
     
     old_data = db.getEventDetails(event_id = event_id, as_json = False)
 
     db.updateEvent(event_id = event_id, event_updates = event_edits)
     for transaction in transaction_edits:
+        try:
+            match transaction["action"]:
+                case "new":
+                    
+                    submitTransaction(db = db, transaction = transaction["transaction_data"],
+                                    group_id = group_id, event_id = event_id, paid_by = event_edits["paid_by"] if "paid_by" in event_edits.keys() else old_data["paid_by"][0])
 
-        match transaction["action"]:
-            case "new":
+                # "delete" action is separate from removing an owed_by member    
+                case "delete":
+                    db.deleteTransaction(by = "subgroup_id", id_value = transaction["subgroup_id"])
 
-                submitTransaction(db = db, transaction = transaction["transaction_data"],
-                                  group_id = group_id, event_id = event_id, paid_by = event_edits["paid_by"] if "paid_by" in event_edits.keys() else old_data["paid_by"][0])
-
-            # "delete" action is separate from removing an owed_by member    
-            case "delete":
-                db.deleteTransaction(by = "subgroup_id", id_value = transaction["subgroup_id"])
-
-            case "update":
-                old_transaction = old_data[old_data["subgroup_id"] == transaction["subgroup_id"]]
-                old_transaction_data = old_transaction.loc[0, ["owed_by", "amount_due", "item_name", "category"]].to_dict()
-                updateOwerRecords(db = db, old_data = old_transaction_data, new_data = transaction["transaction_data"], 
-                                  group_id = group_id, event_id = event_id, subgroup_id = transaction["subgroup_id"])
+                case "update":
+                    old_transaction = old_data[old_data["subgroup_id"] == transaction["subgroup_id"]]
+                    old_transaction_data = old_transaction.loc[0, ["owed_by", "amount_due", "item_name", "category"]].to_dict()
+                    updateOwerRecords(db = db, old_data = old_transaction_data, new_data = transaction["transaction_data"], 
+                                    group_id = group_id, event_id = event_id, subgroup_id = transaction["subgroup_id"])
+        except ZeroDivisionError:
+           pass 
 
 # Helper function, compares transaction data and updates, or inserts new transaction record
 def updateOwerRecords(db: DatabaseManager, old_data: TransactionData, new_data: TransactionData,

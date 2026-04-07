@@ -1,4 +1,5 @@
-const BASE_URL = "https://jbt-backend.vercel.app"
+const DEV = false
+const BASE_URL = DEV ? "http://127.0.0.1:8000" : "https://jbt-backend.vercel.app"
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 function authHeaders() {
