@@ -92,7 +92,7 @@ def submitTransaction(db: DatabaseManager, transaction: TransactionData, group_i
     split_num = len(transaction["owed_by"])
     if split_num == 0:
         raise ZeroDivisionError
-    amount_per_person = round(transaction["amount_due"] / split_num, 2)
+    amount_per_person = transaction["amount_due"] / split_num
     isFirstEntry = True
     subgroupID = None
 
@@ -130,7 +130,7 @@ def summarizeAmountDue(db: DatabaseManager, group_id: int) -> dict[str, float]:
         debits = owed_df[owed_df["paid_by"] == member].groupby("owed_by")["amount_due"].sum()
         credits = owed_df[owed_df["owed_by"] == member].groupby("paid_by")["amount_due"].sum()
 
-        summary = debits.sub(credits, fill_value = 0)
+        summary = debits.sub(credits, fill_value = 0).round(decimals = 2)
         df = summary.to_frame().reset_index()
         df.columns = ["paid_by", "amount"]
         df.insert(0, 'owed_by', member)
@@ -171,7 +171,7 @@ def updateOwerRecords(db: DatabaseManager, old_data: TransactionData, new_data: 
                       group_id: int, event_id: int, subgroup_id: int) -> None:
 
     new_count = len(new_data["owed_by"])
-    new_amount = round(new_data["amount_due"] / new_count, 2)
+    new_amount = new_data["amount_due"] / new_count
     new_data["amount_due"] = new_amount
 
     # Delete old owed_by

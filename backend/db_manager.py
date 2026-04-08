@@ -372,7 +372,7 @@ class DatabaseManager():
 
     def getTotalSpent(self, group_id: int) -> int:
         result = self._execute(
-            "SELECT SUM(amount_due) AS total FROM transactions WHERE group_id = ?",
+            "SELECT SUM(amount_due) AS total FROM transactions WHERE group_id = ? AND NOT (status_flag = 'deleted' OR status_flag IS NULL) ",
             (group_id,)
         )
         return result.rows[0][0]

@@ -65,6 +65,7 @@ export default function App() {
           currentUser={currentUser}
           event={selectedEvent}
           onBack={() => setActivePage('dashboard')}
+          onDelete = {() => setActivePage('dashboard')}
           onSubmit={() => {
             triggerRefresh()
             setActivePage('dashboard')

@@ -79,7 +79,7 @@ export default function AddTransaction({ group, currentUser, onBack, onSubmit })
       setError("Event name is required")
       return
     }
-    const validRows = rows.filter(r => r.item_name.trim() && r.amount_due && r.owed_by.length > 0)
+    const validRows = rows.filter(r => r.item_name.trim() && r.amount_due && r.owed_by.length > 0 && r.amount_due > 0)
     if (validRows.length === 0) {
       setError("Add at least one transaction item")
       return

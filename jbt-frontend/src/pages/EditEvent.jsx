@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getGroupMembers, getEventDetails, updateEvent } from '../api/api'
+import { getGroupMembers, getEventDetails, updateEvent, deleteEvent } from '../api/api'
 
 // ─── API functions used in this file ────────────────────────────────────────
 // getGroupMembers(groupId)   → [{ username, email, is_owner }, ...]
@@ -30,12 +30,13 @@ const emptyRow = () => ({
   owed_by: []
 })
 
-export default function EditEvent({ group, currentUser, event, onBack, onSubmit }) {
+export default function EditEvent({ group, currentUser, event, onBack, onDelete, onSubmit }) {
   const [members, setMembers] = useState([])
   const [loadingMembers, setLoadingMembers] = useState(true)
   const [loadingEvent, setLoadingEvent] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const [form, setForm] = useState({
     event_name: '',
@@ -217,7 +218,6 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
     setSubmitting(true)
     setError(null)
     try {
-      console.log(JSON.stringify(payload))
       await updateEvent(payload, event.event_id)
       onSubmit()
     } catch (err) {
@@ -225,6 +225,22 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handleDelete() {
+    const confirmation = confirm("Are you sure about that?")
+    
+    if (!confirmation) return
+    
+    try {
+      await deleteEvent(event.event_id)
+      onDelete()
+    } catch (err) {
+      setError("Could not delete group")
+    } finally {
+      setDeleting(true)
+    }
+
   }
 
   const memberNames = members.map(m => m.username)
@@ -247,6 +263,12 @@ export default function EditEvent({ group, currentUser, event, onBack, onSubmit 
             <div style={{ padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #111', background: '#111', color: 'white', fontSize: '13px', fontWeight: '500' }}>
               {group?.group_name || 'Group'}
             </div>
+            <button onClick={handleDelete}
+              style={{ padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #111', cursor: 'pointer', background: '#111', color: 'white', fontSize: '13px', fontWeight: '500' }}
+              disabled = { deleting || submitting || isLoading }
+            >
+              DELETE EVENT
+            </button>
           </div>
           <span style={{ fontSize: '12px', color: '#aaa', fontWeight: '500' }}>Editing event</span>
         </div>

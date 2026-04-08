@@ -70,7 +70,6 @@ export async function deleteGroup(groupId) {
 }
 
 export async function updateGroup(groupId, form) {
-  console.log(form)
   const res = await fetch(`${BASE_URL}/update_group_info/${groupId}`, {
     method: "POST",
     headers: authHeaders(),
@@ -128,6 +127,17 @@ export async function createEvent(groupId, { event_name, description, currency, 
   handleUnauthorized(res)
   if (!res.ok) throw new Error("Failed to create event")
   return await res.json()
+}
+
+export async function deleteEvent(eventId) {
+  const res = await fetch(`${BASE_URL}/delete_event/${eventId}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({})
+  })
+  handleUnauthorized(res)
+  if (!res.ok) throw new Error("Could not delete event")
+    return await res.json()
 }
 
 export async function getEventDetails(eventId) {
