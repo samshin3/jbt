@@ -28,7 +28,6 @@ def getGroups(db: DatabaseManager, username: str) -> pd.DataFrame:
 def updateGroup(db: DatabaseManager, group_id: str, updates: GroupUpdates) -> None:
     if not db.groupExists(group_id = group_id):
         return
-    
     db.updateGroupInfo(group_id = group_id, field_updates = updates)
 
 def deleteGroup(db: DatabaseManager, group_id: int) -> None:
@@ -212,7 +211,6 @@ def deleteEvent(db: DatabaseManager, event_id: int) -> None:
     #     db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = row["owed_by"], amount = row["amount_due"])
 
 def getMembersFromTransactionData(transactionData: list[TransactionData]) -> list:
-    print(transactionData)
     members_from_data = list(map(lambda x: x["owed_by"], transactionData))
     members_from_data = list(itertools.chain.from_iterable(members_from_data))
     return list(set(members_from_data))

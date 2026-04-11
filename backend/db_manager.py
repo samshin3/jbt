@@ -97,6 +97,7 @@ class DatabaseManager():
 
         values.append(group_id)
         query = f"UPDATE group_info SET {', '.join(updates)}, modified_date = date('now') WHERE group_id = ?"
+        print((query, values))
         self._execute(query, tuple(values))
 
     def getGroupData(self, group_id: int) -> pd.DataFrame:
