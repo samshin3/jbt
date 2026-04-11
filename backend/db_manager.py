@@ -123,9 +123,9 @@ class DatabaseManager():
 
     # ─── Group Members ────────────────────────────────────────────────────────
 
-    def userIsMember(self, group_id: int, username: str) -> bool:
+    def userIsMember(self, group_id: int, username: list[str]) -> bool:
         result = self._execute(
-            "SELECT COUNT(*) FROM group_members WHERE group_id = ? AND username = ? AND status_flag = 'active'",
+            "SELECT COUNT(*) FROM group_members WHERE group_id = ? AND username IN ? AND status_flag = 'active'",
             (group_id, username)
         )
         return result.rows[0][0] > 0
@@ -175,7 +175,7 @@ class DatabaseManager():
         )
 
     def changeGroupOwner(self, group_id: int, new_owner: str = None) -> None:
-        if new_owner is not None and not self.userIsMember(group_id=group_id, username=new_owner):
+        if new_owner is not None and not self.userIsMember(group_id=group_id, username=[new_owner]):
             return
 
         # Remove current owner flag

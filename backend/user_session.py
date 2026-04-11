@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import date
 from typing import List
 from data_validation import TransactionData, EventUpdates, GroupUpdates, TransactionEdits, RequestStatus
+from exceptions import *
+import itertools
 
 # Date must be iso format string "YYYY-MM-dd"
 def createGroup(db: DatabaseManager, username: str, group_name: str, start: str, end: str, location: str, description: str = None) -> int:
@@ -43,13 +45,13 @@ def inviteMembersToGroup(db: DatabaseManager, group_id: int, inviter: str, invit
     if db.alreadyInvited(group_id = group_id, invitee = invitee):
         return
     
-    if db.userIsMember(group_id = group_id, username = invitee):
+    if db.userIsMember(group_id = group_id, username = [invitee]):
         return
     
     db.createInvite(invitee = invitee, invited_by = inviter, group_id = group_id)
 
 def acceptInvite(db: DatabaseManager, username: str, group_id: int, new_member: str) -> None:
-    if db.userIsMember(group_id = group_id, new_member = new_member):
+    if db.userIsMember(group_id = group_id, new_member = [new_member]):
         return
 
     db.addMemberToGroup(group_id = group_id, username = new_member)
@@ -58,7 +60,7 @@ def acceptInvite(db: DatabaseManager, username: str, group_id: int, new_member: 
 def leaveGroup(db: DatabaseManager, username: str, group_id: int) -> None:
     
     # User already left
-    if not db.userIsMember(group_id = group_id, username = username):
+    if not db.userIsMember(group_id = group_id, username = [username]):
         return
 
     db.removeMember(group_id = group_id, username = username)
@@ -71,6 +73,12 @@ def leaveGroup(db: DatabaseManager, username: str, group_id: int) -> None:
 # transactions is a list of TransactionData dicts with keys: [item_name, category, amount_due, owed_by]
 def createEvent(db: DatabaseManager, username: str, group_id: int, event_name: str,
                 event_desc: str, currency: str, transactions: List[TransactionData], paid_by: str = None) -> None:
+    
+    members_in_transactions = getMembersFromTransactionData(transactions)
+    not_in_group = getNoneMembers(member_list = members_in_transactions, group_id = group_id, db = db)
+    
+    if len(not_in_group) > 0:
+        raise UserNotInGroupError(users = not_in_group, group_id = group_id)
 
     if paid_by is None:
         paid_by = username
@@ -203,11 +211,37 @@ def deleteEvent(db: DatabaseManager, event_id: int) -> None:
     # for index, row in recon.iterrows():
     #     db.updateUserOwedAmounts(group_id = group_id, paid_by = paid_by, owed_by = row["owed_by"], amount = row["amount_due"])
 
+def getMembersFromTransactionData(transactionData: list[TransactionData]) -> list:
+    print(transactionData)
+    members_from_data = list(map(lambda x: x["owed_by"], transactionData))
+    members_from_data = list(itertools.chain.from_iterable(members_from_data))
+    return list(set(members_from_data))
+
+def getNoneMembers(member_list: list[str], group_id: int, db: DatabaseManager) -> list:
+    actual_members = db.getGroupMembers(group_id = group_id)["username"].tolist()
+    non_members = []
+    for member in member_list:
+        if member not in actual_members:
+            non_members.append(member)
+
+    return non_members
+
+
 
 if __name__ == "__main__":
 
     db = DatabaseManager()
     test_console = False
+
+    test_json = {
+        "lol": "lololol",
+        "owed_by": ["sam", "joanna"]
+    }
+
+    test_json2 = {
+        "lol": "lololol",
+        "owed_by": ["michele", "michael"]
+    }
 
     event_edits = {
         "event_name": "new_name",
@@ -233,10 +267,13 @@ if __name__ == "__main__":
         }
     ]
 
+    test_invalid_trans = {
+        "item_name": "test",
+        "category": "General",
+        "amount_due":20,
+        "owed_by": ["Tristan"]
+    }
 
-    leaveGroup(db = db, username = "Sam", group_id = 6)
 
-    if test_console:
-        while True:
-            query = input("Query: ")
-            print(db.runCustomQuery(query))
+
+    #leaveGroup(db = db, username = "Sam", group_id = 6)
