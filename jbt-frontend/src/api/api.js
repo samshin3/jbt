@@ -1,4 +1,4 @@
-const DEV = false
+const DEV = true
 const BASE_URL = DEV ? "http://127.0.0.1:8000" : "https://jbt-backend.vercel.app"
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
@@ -60,9 +60,8 @@ export async function createGroup(groupName, start, end, location, description) 
 
 export async function deleteGroup(groupId) {
   const res = await fetch(`${BASE_URL}/delete_group/${groupId}`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({})
+    method: "DELETE",
+    headers: authHeaders()
   })
   handleUnauthorized(res)
   if (!res.ok) throw new Error("Failed to delete group")
@@ -71,7 +70,7 @@ export async function deleteGroup(groupId) {
 
 export async function updateGroup(groupId, form) {
   const res = await fetch(`${BASE_URL}/update_group_info/${groupId}`, {
-    method: "POST",
+    method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify(form)
   })
@@ -131,9 +130,8 @@ export async function createEvent(groupId, { event_name, description, currency, 
 
 export async function deleteEvent(eventId) {
   const res = await fetch(`${BASE_URL}/delete_event/${eventId}`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({})
+    method: "DELETE",
+    headers: authHeaders()
   })
   handleUnauthorized(res)
   if (!res.ok) throw new Error("Could not delete event")
@@ -151,7 +149,7 @@ export async function getEventDetails(eventId) {
 
 export async function updateEvent(payload, event_id) {
   const res = await fetch(`${BASE_URL}/update_event/${event_id}`, {
-    method: "POST",
+    method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify(payload)
   })

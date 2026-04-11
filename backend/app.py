@@ -138,14 +138,13 @@ def get_total_route(group_id: int, username: str = Depends(get_current_user), db
         return 0
     return results
 
-@app.post("/update_group_info/{group_id}")
+@app.patch("/update_group_info/{group_id}")
 def update_group_info_route(group_id: int, req: GroupUpdates, username: str = Depends(get_current_user), db = Depends(get_db)):
-    print(req)
     updateGroup(db = db, group_id = group_id, updates = req)
     return {"status": "ok"}
 
-@app.post("/delete_group/{group_id}")
-def delete_group_route(group_id: int, req: GroupUpdates = None, username: str = Depends(get_current_user), db = Depends(get_db)):
+@app.delete("/delete_group/{group_id}")
+def delete_group_route(group_id: int, username: str = Depends(get_current_user), db = Depends(get_db)):
     deleteGroup(db = db, group_id = group_id)
     return {"status": "ok"}
 
@@ -156,13 +155,13 @@ def get_event_details_route(event_id: int, username: str = Depends(get_current_u
         return 0
     return results
 
-@app.post("/update_event/{event_id}")
+@app.patch("/update_event/{event_id}")
 def update_event_route(event_id: int, req: EventUpdateRequest, username: str = Depends(get_current_user), db = Depends(get_db)):
     updateEventFull(db = db, group_id = req["group_id"], event_id = event_id, event_edits = req["event_updates"], transaction_edits = req["transaction_updates"])
     return {"status": "ok"}
 
-@app.post("/delete_event/{event_id}")
-def delete_event_route(event_id: int, req: GroupUpdates = None, username: str = Depends(get_current_user), db = Depends(get_db)):
+@app.delete("/delete_event/{event_id}")
+def delete_event_route(event_id: int, username: str = Depends(get_current_user), db = Depends(get_db)):
     deleteEvent(db = db, event_id = event_id)
     return {"status": "ok"}
     
