@@ -416,21 +416,27 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
                 <div
                   key={tx.event_id || i}
                   style={{
-                    display: 'grid', gridTemplateColumns: '1fr auto auto auto auto',
+                    display: 'grid', gridTemplateColumns: '1fr auto auto auto auto auto',
                     padding: '12px 0', borderBottom: '1px solid #f8f8f8',
                     gap: '16px', alignItems: 'center'
                   }}
                 >
-                  <span style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer'}} 
-                    onClick = {()=>onEditEvent(tx, selectedGroup)}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#eaeaea'; e.currentTarget.style.color = 'black'; e.currentTarget.style.borderColor = '#bfbfbf' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#444'; e.currentTarget.style.borderColor = '#f8f8f8' }}
-                    >
-                    {tx.event_name}
-                  </span>
+                  
+                  <span style={{ fontSize: '14px', fontWeight: '500'}}>{tx.event_name}</span>
+                  <div>
+                    <button style={{
+                        padding: '8px 18px', background: '#d9d9d9', color: '#444', border: '#b6b6b6',
+                        borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+                        }}      onClick = {()=>onEditEvent(tx, selectedGroup)}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#eaeaea'; e.currentTarget.style.color = 'black'; e.currentTarget.style.borderColor = '#bfbfbf' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#d9d9d9'; e.currentTarget.style.color = '#444'; e.currentTarget.style.borderColor = '#b6b6b6' }}
+                      >Edit Event
+                    </button>
+                  </div>
                   <span style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>{tx.upload_date || tx.date}</span>
                   <span style={{ fontSize: '14px', fontWeight: '600', textAlign: 'right' }}>{tx.total}</span>
                   <span style={{ fontSize: '13px', color: '#555', textAlign: 'right' }}>{tx.paid_by}</span>
+                  
                 </div>
               ))}
             </div>
