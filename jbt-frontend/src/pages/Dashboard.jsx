@@ -148,6 +148,7 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
   const [loadingGroupData, setLoadingGroupData] = useState(false)
   const [error, setError] = useState(null)
   const [totalSpent, setTotal] = useState([])
+  const [showCreate, setShowCreate] = useState(false)
 
   // Fetch groups on mount and when refreshKey changes
   useEffect(() => {
@@ -218,10 +219,23 @@ export default function Dashboard({ currentUser, selectedGroup: initialGroup, on
   )
 
   if (!selectedGroup) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: "'DM Sans', sans-serif", color: '#888' }}>
-      No groups found. Create one to get started.
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f4f0' }}>
+      <Sidebar
+        groups={groups}
+        selectedGroup={selectedGroup}
+        onSelectGroup={(group) => {
+          setSelectedGroup(group)
+          onSelectGroup(group)
+        }}
+        onGroupCreated={fetchGroups}
+      />
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: "'DM Sans', sans-serif", color: '#888' }}>
+        No groups found. Create one to get started.
+      </span>
     </div>
+    
   )
+  
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f4f0' }}>
