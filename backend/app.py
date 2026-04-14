@@ -165,3 +165,8 @@ def delete_event_route(event_id: int, username: str = Depends(get_current_user),
     deleteEvent(db = db, event_id = event_id)
     return {"status": "ok"}
     
+@app.post("/create_invite/{group_id}/{invitee}")
+def create_invite_route(group_id: int, invitee: str, username: str = Depends(get_current_user), db = Depends(get_db)):
+    inviteMembersToGroup(db = db, group_id = group_id, inviter = username, invitee = invitee)
+    return {"status": "ok"}
+

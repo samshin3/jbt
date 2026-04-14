@@ -7,13 +7,14 @@ import certifi
 
 # Force Python to use certifi's bundle
 os.environ['SSL_CERT_FILE'] = certifi.where()
+DEV = False
 
 class DatabaseManager():
 
     IdCategories = Literal["group_id", "event_id", "transaction_id", "subgroup_id"]
 
     def __init__(self):
-        url = os.getenv("JBT_DATABASE_TURSO_DATABASE_URL")
+        url = os.getenv("JBT_DATABASE_TURSO_DATABASE_URL") if not DEV else "file:localCopy.db"
 
         url = url.replace("libsql://", "https://")
         url = url.replace("wss://", "https://")

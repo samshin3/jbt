@@ -38,6 +38,10 @@ def deleteGroup(db: DatabaseManager, group_id: int) -> None:
 
 
 def inviteMembersToGroup(db: DatabaseManager, group_id: int, inviter: str, invitee: str) -> None:
+
+    if not db.userIsMember(group_id = group_id, username = inviter):
+        return
+    
     if not db.userExists(username = invitee):
         return
     

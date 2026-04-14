@@ -35,7 +35,7 @@ export default function Login({ onLogin }) {
           Japan Budget Tracker
         </h1>
         <p style={{ color: '#888', fontSize: '14px', margin: '0 0 32px' }}>
-          Sign in to manage your group expenses
+          Sign in to manage your group expenses (Use username 'Guest' to test)
         </p>
 
         <form onSubmit={handleSubmit}>
